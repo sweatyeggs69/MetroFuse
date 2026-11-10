@@ -25,13 +25,13 @@ inline constexpr const char* kGameCode = "AMTE";            // 0xAC, 4 bytes
 inline constexpr unsigned kRevision = 0;                    // 0xBC
 inline constexpr std::size_t kRomSize = 8 * 1024 * 1024;
 
-// SHA-1 of the known-good dump (lowercase hex). TODO(verify): fill in from a verified No-Intro
-// dump. While it is empty, a ROM is accepted when its header matches kGameCode/kRevision and its
-// size is kRomSize, and the launcher labels it "header match (fingerprint not pinned yet)".
-inline constexpr const char* kExpectedSha1 = "";
+// SHA-1 of the known-good dump (lowercase hex), checked against the maintainer's own cartridge
+// dump on 2026-11-10 (MD5 af5040fc0f579800151ee2a683e2e5b5, CRC32 6C75479C). If this is ever
+// emptied, a ROM is accepted on a header match instead and the launcher labels it
+// "header match (fingerprint not pinned yet)".
+inline constexpr const char* kExpectedSha1 = "ca33f4348c2c05dd330d37b97e2c5a69531dfe87";
 
-// Battery save. TODO(verify): Metroid Fusion is believed to use 32 KiB SRAM; confirm against the
-// game's save type string in the ROM before relying on the importer's size checks.
+// Battery save: 32 KiB SRAM (the ROM carries the SRAM_V112 library string).
 inline constexpr std::size_t kSaveSize = 32 * 1024;
 // Bytes the game writes at SRAM offset 0, used to reject saves from other games. Empty disables
 // the check. TODO(verify): find Fusion's save signature and set it here.

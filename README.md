@@ -51,11 +51,12 @@ Everything game-specific is described in one file, [`src/game.h`](src/game.h). I
 | --- | --- |
 | Build system, CI, packaging (DMG, single-file EXE, AppImage) | Done (from KNID, renamed) |
 | GBA runtime, launcher, options, save states, updater, achievements | Done (game-agnostic) |
-| ROM check | Header match on `AMTE` rev 0, 8 MiB. **SHA-1 not pinned yet** (`game::kExpectedSha1`) |
-| Battery saves | Assumes 32 KiB SRAM. **Save type and signature to verify** (`game::kSaveSize`, `game::kSaveHeader`) |
+| ROM check | Done: SHA-1 pinned to the USA dump (`AMTE` rev 0, 8 MiB) |
+| Battery saves | 32 KiB SRAM (confirmed from the ROM). **Save signature not set yet** (`game::kSaveHeader`), so saves from other 32 KiB SRAM games are not rejected |
 | Widescreen | Stub in `src/gba/wide_level.cpp`: extra columns fall back to VRAM until Fusion's level layout is mapped |
 | App icon and theme | Placeholder (KNID's procedural art); needs original MetroFuse artwork |
-| RecompLauncher metadata | Not added yet (`recomplauncher.json` needs the dump's CRC32) |
+| RecompLauncher metadata | Done (`recomplauncher.json`) |
+| Save states across BIOS settings | A state made with the real BIOS usually can't be loaded with the built-in BIOS: Fusion idles inside the BIOS wait in System mode, which the converter can't unwind yet |
 
 ## Controls
 
