@@ -97,19 +97,16 @@ void Gba::ppu_render_text_bg(int bg, int y, u16* color, u8* opaque) {
         u32 map = screen_base + block * 0x800 + ((sy & 255) >> 3) * 64 + ((sx & 255) >> 3) * 2;
         if (map >= 0x10000) { opaque[x] = 0; continue; }
         u16 e = rd16(&vram_[map]);
-        if (bg >= 2 && wide_level_[bg - 2].valid && (x < m || x >= m + kScreenWidth)) {
+        if (m && (x < m || x >= m + kScreenWidth) && wide_level_[bg].mode != WideMode::Vram) {
             // Outside the original view the VRAM ring holds stale columns: rebuild the
-            // entry from the level layout in RAM instead (wide_level.cpp).
-            const WideLevel& L = wide_level_[bg - 2];
-            s32 ax = s32(xx) + s32(hofs) + L.cam_x;
-            // The far background (BG3) is a panorama only a little wider than the view the
-            // game needs; repeat it sideways rather than show its unused edge.
-            if (bg == 3 && L.tiles_w > 0) ax = ((ax % (L.tiles_w * 8)) + L.tiles_w * 8) % (L.tiles_w * 8);
+            // entry from the level layout in RAM instead (wide_level.cpp), or hide it.
+            const WideLevel& L = wide_level_[bg];
+            const s32 ax = s32(xx) + s32(hofs) + L.cam_x;
             const s32 ay = s32(yy) + s32(vofs) + L.cam_y;
-            if (ax >= 0 && ay >= 0 && ax < L.tiles_w * 8 && ay < L.tiles_h * 8) {
-                e = wide_level_entry(bg - 2, ax >> 3, ay >> 3);
-            } else if (bg == 2) {
-                opaque[x] = 0;  // beyond the level's edge
+            if (L.mode == WideMode::Level && ax >= 0 && ay >= 0 && ax < L.tiles_w * 8 && ay < L.tiles_h * 8) {
+                e = wide_level_entry(bg, ax >> 3, ay >> 3);
+            } else {
+                opaque[x] = 0;  // hidden, or beyond the level's edge
                 continue;
             }
         }
@@ -217,9 +214,13 @@ void Gba::ppu_render_objects(int y) {
             pc = s16(rd16(&oam_[p + 22]));
             pd = s16(rd16(&oam_[p + 30]));
         }
+        // HUD objects (and objects the game parks just past the right edge) stay in the
+        // original view, which is all the game expects to be seen.
+        const bool clip240 = wide_scene_ && int(prio) == wide_hud_prio_;
         for (int bx = 0; bx < bw; ++bx) {
             int sx = ox + bx + wide_margin_;  // index into the (possibly wide) line
             if (sx < 0 || sx >= kScreenWidth + 2 * wide_margin_) continue;
+            if (clip240 && (sx < wide_margin_ || sx >= wide_margin_ + kScreenWidth)) continue;
             int tx, ty;
             int mbx = mosaic ? bx - bx % int(mh) : bx;
             if (affine) {
@@ -304,21 +305,28 @@ void Gba::ppu_render_line(int y) {
     else { obj_prio_.fill(4); obj_window_.fill(0); }
     advance_refs();
 
-    // Widescreen policy. Only gameplay widens: a frame counts as gameplay when the level
-    // layout in RAM matches BG2 (wide_level.cpp). There, 512-wide level layers and sprites
-    // fill the sides, while 256-wide maps (HUD/overlays) stay inside the original view.
-    // Every other screen (title, menus, cutscenes) keeps black sides.
-    const bool wide_scene = m && wide_level_[0].valid;
+    // Widescreen policy (wide_level.cpp decides it per frame). Only gameplay widens; every
+    // other screen (title, menus, cutscenes) keeps black sides. In gameplay each background
+    // fills the sides as wide_level_[bg].mode says; affine layers are left out.
+    const bool wide_scene = m && wide_scene_;
     if (m) {
         auto is_text = [&](int bg) { return mode == 0 || (mode == 1 && bg < 2); };
         for (int bg = 0; bg < 4; ++bg) {
             if (!active[bg]) continue;
-            if (wide_scene && is_text(bg) && (io_[0x09 + 2 * bg] & 0x40)) continue;
-            if (wide_scene && !is_text(bg)) continue;
+            if (wide_scene && is_text(bg)) continue;
             std::fill(bg_opaque_[bg].begin(), bg_opaque_[bg].begin() + m, u8(0));
             std::fill(bg_opaque_[bg].begin() + m + kScreenWidth, bg_opaque_[bg].begin() + width, u8(0));
         }
     }
+
+    // Side columns past the edge of the room (main level layer) stay black.
+    auto outside_level = [&](int x) {
+        if (wide_main_bg_ < 0) return false;
+        const WideLevel& L = wide_level_[wide_main_bg_];
+        const s32 ax = s32(x - m) + s32(rd16(&io_[0x10 + 4 * wide_main_bg_]) & 0x1FF) + L.cam_x;
+        const s32 ay = s32(y) + s32(rd16(&io_[0x12 + 4 * wide_main_bg_]) & 0x1FF) + L.cam_y;
+        return ax < 0 || ay < 0 || ax >= L.tiles_w * 8 || ay >= L.tiles_h * 8;
+    };
 
     u32 bgprio[4];
     for (int bg = 0; bg < 4; ++bg) bgprio[bg] = io_[0x08 + 2 * bg] & 3;
@@ -343,9 +351,11 @@ void Gba::ppu_render_line(int y) {
     u16 backdrop = rd16(&pal_[0]);
 
     for (int x = 0; x < width; ++x) {
-        if (m && !wide_scene && (x < m || x >= m + kScreenWidth)) {
-            out[x] = 0;
-            continue;
+        if (m && (x < m || x >= m + kScreenWidth)) {
+            if (!wide_scene || outside_level(x)) {
+                out[x] = 0;
+                continue;
+            }
         }
         u8 mask = 0x3F;
         if (any_win) {
