@@ -552,7 +552,7 @@ void Achievements::Impl::draw_game() {
                 else ImGui::Dummy(ImVec2(44, 44));
                 ImGui::SameLine();
                 ImGui::BeginGroup();
-                ImGui::TextColored(unlocked ? c.yellow : c.text, "%s", a->title ? a->title : "");
+                ImGui::TextColored(unlocked ? c.gold : c.text, "%s", a->title ? a->title : "");
                 ImGui::SameLine();
                 ImGui::TextColored(c.text_dim, "%u pt%s", a->points, a->points == 1 ? "" : "s");
                 ImGui::PushFont(theme::font_small());

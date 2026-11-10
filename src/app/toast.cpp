@@ -41,8 +41,8 @@ ImVec4 accent(Style s) {
     switch (s) {
         case Style::Success: return c.good;
         case Style::Warning: return c.bad;
-        case Style::Achievement: return c.yellow;
-        default: return c.pink;
+        case Style::Achievement: return c.gold;
+        default: return c.cyan;
     }
 }
 
