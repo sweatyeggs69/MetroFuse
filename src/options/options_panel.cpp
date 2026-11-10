@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "app/config.h"
+#include "app/theme.h"
 #include "options/display.h"
 #include "options/input.h"
 
@@ -306,7 +307,7 @@ void controls_tab(input::Manager& in, Config& config) {
 }  // namespace
 
 namespace {
-// One sidebar entry: a full-width rounded pill. The selected page is pink with dark text.
+// One sidebar entry: a full-width rounded pill. The selected page is cyan with dark text.
 bool nav_item(const char* label, bool selected, float height) {
     const ImGuiStyle& style = ImGui::GetStyle();
     const ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -322,8 +323,8 @@ bool nav_item(const char* label, bool selected, float height) {
     } else if (hovered || held) {
         dl->AddRectFilled(pos, end, ImGui::GetColorU32(ImGuiCol_FrameBgHovered), rounding);
     }
-    // Dark text on the pink pill, the theme's normal text elsewhere.
-    const ImU32 text = selected ? IM_COL32(58, 20, 46, 255) : ImGui::GetColorU32(ImGuiCol_Text);
+    // Dark text on the cyan pill, the theme's normal text elsewhere.
+    const ImU32 text = selected ? theme::u32(theme::palette().text_on_cyan) : ImGui::GetColorU32(ImGuiCol_Text);
     const ImVec2 ts = ImGui::CalcTextSize(label);
     dl->AddText(ImVec2(pos.x + style.FramePadding.x + 2.0f, pos.y + (size.y - ts.y) * 0.5f), text, label);
     return pressed;

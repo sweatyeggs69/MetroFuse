@@ -46,7 +46,7 @@ void draw_notes(const std::string& notes, float height) {
     ImGui::PushTextWrapPos(0);
     for (const auto& l : lines) {
         switch (l.kind) {
-            case update::NoteLine::Heading: ImGui::TextColored(c.pink, "%s", l.text.c_str()); break;
+            case update::NoteLine::Heading: ImGui::TextColored(c.cyan, "%s", l.text.c_str()); break;
             case update::NoteLine::Bullet:
                 ImGui::Bullet();
                 ImGui::TextWrapped("%s", l.text.c_str());
@@ -77,7 +77,7 @@ void draw_panel(Updater& u, Config& config, bool popup) {
             ImGui::TextColored(c.good, "You have the latest version (%s).", st.current.c_str());
             break;
         case State::Available:
-            ImGui::TextColored(c.yellow, "MetroFuse %s is available. You have %s.", st.latest.c_str(), st.current.c_str());
+            ImGui::TextColored(c.gold, "MetroFuse %s is available. You have %s.", st.latest.c_str(), st.current.c_str());
             break;
         case State::Downloading: {
             ImGui::Text("Downloading MetroFuse %s...", st.latest.c_str());
@@ -209,7 +209,7 @@ void draw_launcher_notice(Updater& u, Config& config) {
                   ImGui::CalcTextSize(button.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
         ImGui::SetCursorPosX(std::max(0.0f, (ImGui::GetWindowSize().x - w) * 0.5f));
         ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(c.yellow, "%s", text.c_str());
+        ImGui::TextColored(c.gold, "%s", text.c_str());
         ImGui::SameLine();
         if (ImGui::SmallButton(button.c_str())) ui().open_popup = true;
         ImGui::PopFont();

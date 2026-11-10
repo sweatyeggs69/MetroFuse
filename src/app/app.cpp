@@ -582,7 +582,7 @@ void App::draw_first_run() {
     ImVec2 ds = ImGui::GetIO().DisplaySize;
     begin_card("##firstrun", ImVec2(std::min(620.0f, ds.x - 40), 0));
     ImGui::Dummy(ImVec2(0, 4));
-    theme::centered_text("Welcome to MetroFuse", theme::font_title(), c.pink);
+    theme::centered_text("Welcome to MetroFuse", theme::font_title(), c.cyan);
     theme::centered_text((std::string(game::kTitle) + ", native on your computer").c_str(), theme::font_small(), c.text_dim);
     ImGui::Dummy(ImVec2(0, 8));
     ImGui::PushTextWrapPos(0);
@@ -621,7 +621,7 @@ void App::draw_launcher() {
         ImGui::Dummy(ImVec2(0, 6));
     } else {
         ImGui::Dummy(ImVec2(0, 2));
-        theme::centered_text("MetroFuse", theme::font_title(), c.pink);
+        theme::centered_text("MetroFuse", theme::font_title(), c.cyan);
         ImGui::Dummy(ImVec2(0, 12));
     }
     float bw = ImGui::GetContentRegionAvail().x;
@@ -666,19 +666,19 @@ void App::draw_launcher() {
         ImGui::PushFont(theme::font_small());
         ImGui::PushTextWrapPos(0);
         if (!rom_error_.empty()) ImGui::TextColored(c.bad, "%s", rom_error_.c_str());
-        if (show_info) ImGui::TextColored(c.yellow, "%s", info_.c_str());
+        if (show_info) ImGui::TextColored(c.gold, "%s", info_.c_str());
         ImGui::PopTextWrapPos();
         ImGui::PopFont();
     }
     update_ui::draw_launcher_notice(*updater_, config_);
 
-    // Same width as the launcher card, no title bar: a pink heading like the settings pages.
+    // Same width as the launcher card, no title bar: a cyan heading like the settings pages.
     ImGui::SetNextWindowSize(ImVec2(std::min(480.0f, ds.x - 40), 0), ImGuiCond_Always);
     if (ImGui::BeginPopupModal("Create a shortcut", nullptr,
                                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                    ImGuiWindowFlags_NoSavedSettings)) {
         ImGui::Dummy(ImVec2(0, 2));
-        theme::centered_text("Create a shortcut", theme::font_button(), c.pink);
+        theme::centered_text("Create a shortcut", theme::font_button(), c.cyan);
         ImGui::Dummy(ImVec2(0, 2));
         ImGui::PushTextWrapPos(0);
         ImGui::TextColored(c.text_dim, "A shortcut starts the game directly, skipping this menu.");
@@ -933,7 +933,7 @@ void App::draw_states_tab() {
         bool usable = i.exists && i.error.empty();
         ImGui::PushID(slot);
         bool current = slot == slot_;
-        ImGui::PushStyleColor(ImGuiCol_Border, current ? c.yellow : ImVec4(1, 1, 1, 0.10f));
+        ImGui::PushStyleColor(ImGuiCol_Border, current ? c.gold : ImVec4(1, 1, 1, 0.10f));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.5f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(pad, pad));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6, 6));
@@ -942,7 +942,7 @@ void App::draw_states_tab() {
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && !current) {
             ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
-            ImGui::GetWindowDrawList()->AddRect(wp, ImVec2(wp.x + ws.x, wp.y + ws.y), theme::u32(c.pink, 0.6f),
+            ImGui::GetWindowDrawList()->AddRect(wp, ImVec2(wp.x + ws.x, wp.y + ws.y), theme::u32(c.cyan, 0.6f),
                                                 ImGui::GetStyle().ChildRounding, 0, 1.5f);
         }
         ImVec2 tp = ImGui::GetCursorScreenPos();
@@ -950,7 +950,7 @@ void App::draw_states_tab() {
             ImGui::Image((ImTextureID)(intptr_t)t, ImVec2(thumb_w, thumb_h));
         } else {
             ImDrawList* dl = ImGui::GetWindowDrawList();
-            dl->AddRectFilled(tp, ImVec2(tp.x + thumb_w, tp.y + thumb_h), theme::u32(c.night), 10);
+            dl->AddRectFilled(tp, ImVec2(tp.x + thumb_w, tp.y + thumb_h), theme::u32(c.navy), 10);
             theme::draw_star(dl, ImVec2(tp.x + thumb_w / 2, tp.y + thumb_h / 2 - 8), 16, theme::u32(c.text_dim, 0.4f));
             const char* empty = i.exists ? "Unusable" : "Empty";
             ImVec2 ts = ImGui::CalcTextSize(empty);
@@ -965,7 +965,7 @@ void App::draw_states_tab() {
         std::string title = states::slot_name(slot) + (i.label.empty() ? "" : ": " + i.label);
         // One line, cut with "..." so the card never grows.
         while (title.size() > 4 && ImGui::CalcTextSize(title.c_str()).x > thumb_w) title.resize(title.size() - 4), title += "...";
-        ImGui::TextColored(current ? c.yellow : c.text, "%s", title.c_str());
+        ImGui::TextColored(current ? c.gold : c.text, "%s", title.c_str());
         ImGui::PushFont(theme::font_small());
         if (usable) {
             char when[64];
@@ -1181,8 +1181,8 @@ void App::draw_save_section() {
             ImGui::TextDisabled("%s", pending_save_->format.c_str());
             ImGui::TextUnformatted("Your current save is backed up first (the last 10 are kept).");
             if (game_)
-                ImGui::TextColored(c.yellow, "Importing restarts the game; unsaved progress is lost.");
-            if (!pending_save_->warning.empty()) ImGui::TextColored(c.yellow, "%s", pending_save_->warning.c_str());
+                ImGui::TextColored(c.gold, "Importing restarts the game; unsaved progress is lost.");
+            if (!pending_save_->warning.empty()) ImGui::TextColored(c.gold, "%s", pending_save_->warning.c_str());
         }
         ImGui::Dummy(ImVec2(0, 4));
         if (ImGui::Button("Replace save")) {
@@ -1234,7 +1234,7 @@ void App::draw_game_tab(Config& config) {
     ImGui::SeparatorText("Game ROM");
     if (rom_.ok) {
         if (rom_.rom.header_only)
-            ImGui::TextColored(c.yellow, "%s, header match (fingerprint not pinned yet)", game::kTitleWithRegion);
+            ImGui::TextColored(c.gold, "%s, header match (fingerprint not pinned yet)", game::kTitleWithRegion);
         else
             ImGui::TextColored(c.good, "%s, verified", game::kTitleWithRegion);
         ImGui::PushFont(theme::font_small());
@@ -1332,7 +1332,7 @@ void App::draw_shortcut_controls(bool big) {
     }
     if (!info_.empty() && ImGui::GetTime() < info_until_) {
         ImGui::PushTextWrapPos(0.0f);
-        ImGui::TextColored(c.yellow, "%s", info_.c_str());
+        ImGui::TextColored(c.gold, "%s", info_.c_str());
         ImGui::PopTextWrapPos();
     }
     if (confirm_shortcut_) {
@@ -1362,11 +1362,11 @@ void App::draw_ui() {
         ImVec2 ds = ImGui::GetIO().DisplaySize;
         bool have_frame = attract_ || (game_ && game_paused_);
         if (have_frame) {
-            // Soft night tint over the game backdrop, plus a few stars.
-            bg->AddRectFilledMultiColor(ImVec2(0, 0), ds, theme::u32(theme::palette().night, 0.35f),
-                                        theme::u32(theme::palette().night, 0.35f),
-                                        theme::u32(theme::palette().night, 0.75f),
-                                        theme::u32(theme::palette().night, 0.75f));
+            // Soft navy tint over the game backdrop, plus a few stars.
+            bg->AddRectFilledMultiColor(ImVec2(0, 0), ds, theme::u32(theme::palette().navy, 0.35f),
+                                        theme::u32(theme::palette().navy, 0.35f),
+                                        theme::u32(theme::palette().navy, 0.75f),
+                                        theme::u32(theme::palette().navy, 0.75f));
         } else {
             theme::draw_starfield(bg, ImVec2(0, 0), ds, ImGui::GetTime());
         }
