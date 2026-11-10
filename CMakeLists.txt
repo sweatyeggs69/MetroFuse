@@ -345,6 +345,10 @@ if(METROFUSE_BUILD_TESTS)
         add_executable(metrofuse_achievements_test tests/achievements_test.cpp)
         target_link_libraries(metrofuse_achievements_test PRIVATE metrofuse_launcher rcheevos)
         add_test(NAME achievements COMMAND metrofuse_achievements_test)
+        # Controller bindings driven through a virtual SDL gamepad.
+        add_executable(metrofuse_input_test tests/input_test.cpp)
+        target_link_libraries(metrofuse_input_test PRIVATE metrofuse_launcher)
+        add_test(NAME input COMMAND metrofuse_input_test)
     endif()
 endif()
 
