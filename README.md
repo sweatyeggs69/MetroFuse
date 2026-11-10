@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="assets/icon/metrofuse-icon.png" alt="MetroFuse app icon" width="128">
+</p>
+
+<p align="center">
   <img src="assets/logo/metrofuse-logo.png" alt="MetroFuse" width="520">
 </p>
 
