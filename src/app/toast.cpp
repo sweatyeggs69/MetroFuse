@@ -142,6 +142,14 @@ void draw() {
             if (wdt > 140.0f) { wdt = 140.0f; hgt = wdt * float(t.h) / float(t.w); }
             ImGui::Image((ImTextureID)(intptr_t)t.tex, ImVec2(wdt, hgt));
             ImGui::SameLine();
+            // Center the text block vertically against the thumbnail.
+            float text_h = ImGui::CalcTextSize(t.title.c_str(), nullptr, false, 300.0f).y;
+            if (!t.body.empty()) {
+                ImGui::PushFont(theme::font_small());
+                text_h += ImGui::GetStyle().ItemSpacing.y + ImGui::CalcTextSize(t.body.c_str(), nullptr, false, 320.0f).y;
+                ImGui::PopFont();
+            }
+            if (text_h < hgt) ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (hgt - text_h) * 0.5f);
         }
         ImGui::BeginGroup();
         ImVec2 p = ImGui::GetCursorScreenPos();
