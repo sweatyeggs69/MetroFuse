@@ -616,7 +616,7 @@ void App::draw_launcher() {
     ImVec2 ds = ImGui::GetIO().DisplaySize;
     begin_card("##launcher", ImVec2(std::min(560.0f, ds.x - 40), 0));
     if (logo_tex_) {
-        const float lw = 230.0f, lh = lw * float(logo_h_) / float(logo_w_);
+        const float lw = std::min(420.0f, ImGui::GetContentRegionAvail().x), lh = lw * float(logo_h_) / float(logo_w_);
         ImGui::SetCursorPosX((ImGui::GetWindowSize().x - lw) * 0.5f);
         ImGui::Image((ImTextureID)(intptr_t)logo_tex_, ImVec2(lw, lh));
         ImGui::Dummy(ImVec2(0, 6));

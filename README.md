@@ -1,4 +1,6 @@
-<h1 align="center">MetroFuse</h1>
+<p align="center">
+  <img src="assets/logo/metrofuse-logo.png" alt="MetroFuse" width="520">
+</p>
 
 <p align="center">
   Play <b>Metroid Fusion</b> natively on macOS, Windows and Linux.
