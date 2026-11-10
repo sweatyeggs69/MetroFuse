@@ -72,6 +72,39 @@ void keyboard_defaults() {
         for (const auto& b : list)
             if (b.kind == Binding::Kind::Key) ++uses[b.code];
     for (const auto& [code, n] : uses) CHECK(n == 1);
+
+    // Save state on Page Up, load on Page Down; neither drives a GBA button.
+    auto first_key = [&](Hotkey h) {
+        for (const auto& chord : c.hotkeys[int(h)])
+            if (chord.size() == 1 && chord[0].kind == Binding::Kind::Key) return chord[0].code;
+        return -1;
+    };
+    CHECK(first_key(Hotkey::SaveState) == SDL_SCANCODE_PAGEUP);
+    CHECK(first_key(Hotkey::LoadState) == SDL_SCANCODE_PAGEDOWN);
+    CHECK(!uses.count(SDL_SCANCODE_PAGEUP) && !uses.count(SDL_SCANCODE_PAGEDOWN));
+    CHECK(display_name(Binding{Binding::Kind::Key, SDL_SCANCODE_PAGEUP, 0}) == "Page Up");
+    CHECK(display_name(Binding{Binding::Kind::Key, SDL_SCANCODE_PAGEDOWN, 0}) == "Page Down");
+    // The stored form reads back (settings.ini round trip).
+    Chord parsed;
+    CHECK(chord_from_string(to_string(Chord{Binding{Binding::Kind::Key, SDL_SCANCODE_PAGEUP, 0}}), parsed) &&
+          parsed.size() == 1 && parsed[0].code == SDL_SCANCODE_PAGEUP);
+
+    // Settings written with the old F5/F8 defaults pick up the new keys; custom keys stay.
+    std::map<std::string, std::string> ini;
+    metrofuse::SettingsIO io;
+    io.get = [&](const std::string& k, const std::string& fb) {
+        auto it = ini.find(k);
+        return it == ini.end() ? fb : it->second;
+    };
+    ini["input.hotkey.save_state"] = "key:F5 | pad:back+pad:rightshoulder";
+    ini["input.hotkey.load_state"] = "key:F8 | pad:back+pad:leftshoulder";
+    Config loaded = load(io);
+    CHECK(loaded.hotkeys[int(Hotkey::SaveState)] == c.hotkeys[int(Hotkey::SaveState)]);
+    CHECK(loaded.hotkeys[int(Hotkey::LoadState)] == c.hotkeys[int(Hotkey::LoadState)]);
+    ini["input.hotkey.save_state"] = "key:F5";
+    loaded = load(io);
+    CHECK(loaded.hotkeys[int(Hotkey::SaveState)].size() == 1 &&
+          loaded.hotkeys[int(Hotkey::SaveState)][0][0].code == SDL_SCANCODE_F5);
 }
 
 void gamepad(Manager& m) {

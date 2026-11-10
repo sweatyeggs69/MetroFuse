@@ -82,6 +82,8 @@ std::string display_name(const Binding& b) {
                 case SDL_SCANCODE_RETURN: return "Enter";
                 case SDL_SCANCODE_KP_ENTER: return "Keypad Enter";
                 case SDL_SCANCODE_SPACE: return "Space";
+                case SDL_SCANCODE_PAGEUP: return "Page Up";
+                case SDL_SCANCODE_PAGEDOWN: return "Page Down";
 #ifdef __APPLE__
                 case SDL_SCANCODE_LGUI: return "Left Command";
                 case SDL_SCANCODE_RGUI: return "Right Command";
@@ -277,12 +279,12 @@ Config default_config() {
     at(Button::Down) = {key(SDL_SCANCODE_DOWN), pad(SDL_GAMEPAD_BUTTON_DPAD_DOWN), axis(SDL_GAMEPAD_AXIS_LEFTY, 1)};
     at(Button::R) = {key(SDL_SCANCODE_S), pad(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER), axis(SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, 1)};
     at(Button::L) = {key(SDL_SCANCODE_A), pad(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER), axis(SDL_GAMEPAD_AXIS_LEFT_TRIGGER, 1)};
-    // Shortcuts: F-keys, and Back (Select) held with a shoulder or D-pad side on a controller.
+    // Shortcuts: Page Up / Page Down save and load, F-keys for the rest, and Back (Select) held with a shoulder or D-pad side on a controller.
     auto hk = [&](Hotkey h) -> std::vector<Chord>& { return c.hotkeys[int(h)]; };
     const Binding back = pad(SDL_GAMEPAD_BUTTON_BACK);
-    hk(Hotkey::SaveState) = {{key(SDL_SCANCODE_F5)}, {back, pad(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER)}};
+    hk(Hotkey::SaveState) = {{key(SDL_SCANCODE_PAGEUP)}, {back, pad(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER)}};
     hk(Hotkey::SaveNewSlot) = {{key(SDL_SCANCODE_F9)}, {back, pad(SDL_GAMEPAD_BUTTON_DPAD_UP)}};
-    hk(Hotkey::LoadState) = {{key(SDL_SCANCODE_F8)}, {back, pad(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)}};
+    hk(Hotkey::LoadState) = {{key(SDL_SCANCODE_PAGEDOWN)}, {back, pad(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)}};
     hk(Hotkey::SlotPrev) = {{key(SDL_SCANCODE_F6)}, {back, pad(SDL_GAMEPAD_BUTTON_DPAD_LEFT)}};
     hk(Hotkey::SlotNext) = {{key(SDL_SCANCODE_F7)}, {back, pad(SDL_GAMEPAD_BUTTON_DPAD_RIGHT)}};
     return c;
@@ -358,9 +360,21 @@ Config load(const SettingsIO& io) {
         const std::string buttons = trim(io.get("input.turbo.buttons", ""));
         if (!buttons.empty()) c.turbo.buttons = turbo_buttons_from_string(buttons);
     }
+    // Save/load state used F5/F8 before Page Up/Page Down; settings still holding that old default
+    // move to the new one (a binding the user picked themselves is kept).
+    const Config defaults = default_config();
+    auto old_default = [&](Hotkey h, SDL_Scancode was) {
+        auto list = defaults.hotkeys[int(h)];
+        list.front() = {key(was)};
+        return join_chords(list);
+    };
+    const std::string old_save = old_default(Hotkey::SaveState, SDL_SCANCODE_F5);
+    const std::string old_load = old_default(Hotkey::LoadState, SDL_SCANCODE_F8);
     for (int i = 0; i < kHotkeyCount; ++i) {
         const std::string v = trim(io.get(std::string("input.hotkey.") + key_name(Hotkey(i)), ""));
         if (v.empty()) continue;
+        if ((Hotkey(i) == Hotkey::SaveState && v == old_save) || (Hotkey(i) == Hotkey::LoadState && v == old_load))
+            continue;  // keep the new default
         if (lower(v) == "none") c.hotkeys[i].clear();
         else if (auto list = split_chords(v); !list.empty()) c.hotkeys[i] = std::move(list);
     }
