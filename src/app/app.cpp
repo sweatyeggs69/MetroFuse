@@ -34,10 +34,8 @@
 #include "options/display.h"
 #include "options/presenter.h"
 
-#if defined(METROFUSE_HAVE_LOGO)
 extern const unsigned char metrofuse_image_logo[];
 extern const unsigned metrofuse_image_logo_size;
-#endif
 #include "sha1.h"
 #include "update/update_ui.h"
 #include "update/updater.h"
@@ -550,9 +548,6 @@ void App::capture_window(const std::string& path) {
 }
 
 void App::load_logo() {
-#if !defined(METROFUSE_HAVE_LOGO)
-    return;  // no logo artwork yet (assets/logo/metrofuse-logo.png): the card shows the text title
-#else
     int w = 0, h = 0, n = 0;
     unsigned char* px = stbi_load_from_memory(metrofuse_image_logo, int(metrofuse_image_logo_size), &w, &h, &n, 4);
     if (!px) return;  // the launcher falls back to the text title
@@ -565,7 +560,6 @@ void App::load_logo() {
         logo_h_ = h;
     }
     stbi_image_free(px);
-#endif
 }
 
 void App::begin_card(const char* id, ImVec2 size) {
