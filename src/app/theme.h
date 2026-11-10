@@ -39,11 +39,8 @@ ImFont* font_title();  // ~44 px
 ImFont* font_small();  // ~16 px
 ImFont* font_button(); // ~23 px semibold
 
-// Animated starfield + soft gradient filling [min, max]. t = seconds.
-void draw_starfield(ImDrawList* dl, ImVec2 min, ImVec2 max, double t);
-// Five-point star.
-void draw_star(ImDrawList* dl, ImVec2 center, float radius, ImU32 color, float rotation = 0.0f,
-               bool filled = true);
+// Background: navy-to-purple gradient with a soft orb glow, filling [min, max].
+void draw_backdrop(ImDrawList* dl, ImVec2 min, ImVec2 max);
 // Large rounded button; hover and focus show a gold outline.
 // primary = cyan, otherwise navy-light.
 bool big_button(const char* label, ImVec2 size, bool primary = true);

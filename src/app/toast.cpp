@@ -153,8 +153,8 @@ void draw() {
         }
         ImGui::BeginGroup();
         ImVec2 p = ImGui::GetCursorScreenPos();
-        theme::draw_star(dl, ImVec2(p.x + 8, p.y + 11), t.style == Style::Achievement ? 9.0f : 7.0f,
-                         theme::u32(accent(t.style), alpha));
+        dl->AddCircleFilled(ImVec2(p.x + 8, p.y + 11), t.style == Style::Achievement ? 6.0f : 5.0f,
+                            theme::u32(accent(t.style), alpha));
         ImGui::SetCursorScreenPos(ImVec2(p.x + 22, p.y));
         ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 300.0f);
         ImGui::TextUnformatted(t.title.c_str());
