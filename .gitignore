@@ -23,6 +23,8 @@ generated/**/*.asm
 *.jpg
 *.jpeg
 Screenshot*
+# Original MetroFuse artwork (logo, icon preview) is committed
+!assets/**/*.png
 
 # Milestone screenshots (may show ROM-derived art)
 screenshots/
