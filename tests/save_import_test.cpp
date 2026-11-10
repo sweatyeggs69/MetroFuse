@@ -21,7 +21,7 @@ using Buf = std::vector<std::uint8_t>;
 
 Buf fake_sram() {
     Buf b(metrofuse::kSramSize, 0xFF);
-    std::memcpy(b.data(), metrofuse::game::kSaveHeader, std::strlen(metrofuse::game::kSaveHeader));
+    std::memcpy(b.data(), metrofuse::game::kSaveHeader.data(), metrofuse::game::kSaveHeader.size());
     b[0x40] = 0x01;  // some non-blank data even while the header is not set
     for (int i = 0; i < 116; ++i) b[0x200 + i] = std::uint8_t(i * 7);
     return b;
@@ -87,12 +87,24 @@ int main() {
         CHECK(!normalize_save(Buf(1000, 0), "x.sav").ok);
         CHECK(!normalize_save(Buf(), "x.sav").ok);
     }
+    {  // Fusion's save signature: all 32 bytes count, including the ones after its zero byte
+        using metrofuse::game::kSaveHeader;
+        CHECK(kSaveHeader.size() == 32);
+        CHECK(kSaveHeader.substr(12) == "MetroidAGB-EUVerE004");
+        Buf ok = fake_sram();
+        CHECK(metrofuse::has_game_header(ok));
+        CHECK(normalize_save(ok, "x.sav").ok);
+        for (std::size_t at : {std::size_t(0), std::size_t(11), std::size_t(31)}) {
+            Buf bad = ok;
+            bad[at] ^= 0x01;
+            CHECK(!metrofuse::has_game_header(bad));
+            CHECK(!normalize_save(bad, "x.sav").ok);
+        }
+    }
     {  // another game's 32 KiB SRAM is rejected; a blank one is accepted with a warning
         Buf other(metrofuse::kSramSize, 0x00);
         std::memcpy(other.data(), "OTHERGAME!", 10);
-        // Only meaningful once game::kSaveHeader is set (it is empty until verified).
-        if (*metrofuse::game::kSaveHeader) CHECK(!normalize_save(other, "x.sav").ok);
-        else CHECK(normalize_save(other, "x.sav").ok);
+        CHECK(!normalize_save(other, "x.sav").ok);
         auto blank = normalize_save(Buf(metrofuse::kSramSize, 0xFF), "x.sav");
         CHECK(blank.ok && !blank.warning.empty());
     }

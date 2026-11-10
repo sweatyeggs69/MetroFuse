@@ -9,6 +9,7 @@
 // Nothing here is game data: these are only identifiers and a fingerprint of the user's own ROM.
 
 #include <cstddef>
+#include <string_view>
 
 namespace metrofuse::game {
 
@@ -33,9 +34,11 @@ inline constexpr const char* kExpectedSha1 = "ca33f4348c2c05dd330d37b97e2c5a6953
 
 // Battery save: 32 KiB SRAM (the ROM carries the SRAM_V112 library string).
 inline constexpr std::size_t kSaveSize = 32 * 1024;
-// Bytes the game writes at SRAM offset 0, used to reject saves from other games. Empty disables
-// the check. TODO(verify): find Fusion's save signature and set it here.
-inline constexpr const char* kSaveHeader = "";
+// Bytes the game writes at SRAM offset 0 on first boot, used to reject saves from other games.
+// Empty disables the check. Checked on 2026-11-10 against a fresh first-boot save and a save made
+// at an in-game Save Room: both start with these 32 bytes (a fixed tag, "01", then the game's
+// "MetroidAGB-EUVerE004" save-format string). It holds a zero byte, so the length is explicit.
+inline constexpr std::string_view kSaveHeader{"\xb4\xc8\x9b\xa1" "K7d^" "01" "\x00\x02" "MetroidAGB-EUVerE004", 32};
 
 // Samus's equipment (energy, missiles, power bombs) in IWRAM, used by the cheats menu. Layout
 // from the community disassembly (struct Equipment at gEquipment):
