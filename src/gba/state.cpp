@@ -53,8 +53,17 @@ private:
     X(apu_seq_step_)
 
 // A state saved under one BIOS mode (real BIOS vs. HLE) can be loaded under the other only at a
-// point where no BIOS code is mid-way: the game itself running, or the game waiting in
-// IntrWait/VBlankIntrWait, which is then simply executed again under the new mode.
+// point where no BIOS code is mid-way: the game itself running, or the game waiting in Halt,
+// IntrWait or VBlankIntrWait, which is then backed out to its SWI instruction and simply executed
+// again under the new mode.
+namespace {
+// The real BIOS SWI handler pushes {r11, r12, lr} and then the caller's CPSR on the SVC stack,
+// switches to System mode, pushes {r2, lr} on the caller's stack and calls the SWI with
+// lr = kSwiReturn. The waits are leaves that halt with lr untouched, using r0, r1, r3, r11 and
+// r12 as scratch.
+constexpr u32 kSwiReturn = 0x170;
+}  // namespace
+
 bool Gba::convert_bios_mode(Gba& t, bool from_real) {
     const u32 mode = t.cpsr_ & 0x1F;
     if (mode == 0x12) return false;  // inside an IRQ (the dispatcher differs between modes)
@@ -69,11 +78,6 @@ bool Gba::convert_bios_mode(Gba& t, bool from_real) {
     }
     // Real BIOS -> HLE.
     if (t.pc_ >= 0x4000) return true;  // game code (not inside a SWI)
-    if (mode != 0x13) return false;  // only a SWI (SVC mode) can be unwound
-    const u32 caller = t.bank_spsr_[3];
-    if ((caller & 0x1F) == 0x12 || (caller & 0x1F) == 0x13) return false;
-    const bool thumb = caller & 0x20;
-    const u32 swi_at = t.r_[14] - (thumb ? 2 : 4);
     auto rd8 = [&](u32 a) -> int {
         switch (a >> 24) {
             case 0x02: return t.ewram_[a & 0x3FFFF];
@@ -83,6 +87,40 @@ bool Gba::convert_bios_mode(Gba& t, bool from_real) {
             default: return -1;
         }
     };
+    auto rd32 = [&](u32 a, u32& v) {
+        if ((a >> 24) != 0x03 || (a & 3)) return false;  // the BIOS keeps its stacks in IWRAM
+        v = 0;
+        for (int i = 3; i >= 0; --i) v = (v << 8) | u32(rd8(a + u32(i)));
+        return true;
+    };
+    // Registers of the caller as they will be once the SWI has been backed out.
+    u32 caller, ret, sp_svc, r11 = 0, r12 = 0;
+    bool from_sys_wait = false;
+    u32 sp_sys = 0, r2 = 0, lr_sys = 0;
+    if (mode == 0x13) {
+        // Still in SVC mode: the SWI entry has not switched to System mode yet.
+        caller = t.bank_spsr_[3];
+        ret = t.r_[14];
+        sp_svc = t.r_[13];
+    } else if (mode == 0x1F && t.halted_) {
+        // Halted inside a BIOS wait in System mode, where Fusion spends most of every frame.
+        if (t.r_[14] != kSwiReturn) return false;
+        sp_sys = t.r_[13];
+        if (!rd32(sp_sys, r2) || !rd32(sp_sys + 4, lr_sys)) return false;
+        sp_svc = t.bank_r13_[3];
+        if (!rd32(sp_svc, caller) || !rd32(sp_svc + 4, r11) || !rd32(sp_svc + 8, r12) ||
+            !rd32(sp_svc + 12, ret))
+            return false;
+        if (caller != t.bank_spsr_[3]) return false;  // the SVC SPSR still holds the caller's CPSR
+        from_sys_wait = true;
+    } else {
+        return false;
+    }
+    const u32 caller_mode = caller & 0x1F;
+    if (caller_mode == 0x12 || caller_mode == 0x13) return false;
+    if (from_sys_wait && caller_mode != 0x1F && caller_mode != 0x10) return false;
+    const bool thumb = caller & 0x20;
+    const u32 swi_at = ret - (thumb ? 2 : 4);
     int b0 = rd8(swi_at), b1 = rd8(swi_at + 1), b2 = rd8(swi_at + 2), b3 = thumb ? 0 : rd8(swi_at + 3);
     if (b0 < 0 || b1 < 0 || b2 < 0 || b3 < 0) return false;
     u32 number;
@@ -93,10 +131,26 @@ bool Gba::convert_bios_mode(Gba& t, bool from_real) {
         if ((b3 & 0x0F) != 0x0F) return false;
         number = u32(b2);
     }
-    if (number != 4 && number != 5) return false;  // only IntrWait / VBlankIntrWait
-    // Leave the BIOS: back to the caller's mode with the SVC stack reset, then run the SWI again.
-    t.r_[13] = 0x03007FE0;
-    t.set_cpsr(caller);
+    // Only waits, which change nothing when run again from the start. IntrWait's mask in r1 may
+    // already be overwritten once it is halted in System mode, so there only Halt and
+    // VBlankIntrWait (which sets its own arguments) qualify.
+    if (from_sys_wait ? (number != 2 && number != 5) : (number != 4 && number != 5)) return false;
+    // Leave the BIOS: back to the caller's mode with both stacks popped, then run the SWI again.
+    if (from_sys_wait) {
+        // Pop what the BIOS pushed: {r2, lr} on the System stack and {spsr, r11, r12, lr} on the
+        // SVC stack. r0, r1 and r3 are scratch for these waits.
+        t.r_[2] = r2;
+        t.r_[11] = r11;
+        t.r_[12] = r12;
+        t.r_[13] = sp_sys + 8;
+        t.r_[14] = lr_sys;
+        t.bank_r13_[3] = sp_svc + 16;
+        t.bank_r14_[3] = ret;
+        t.cpsr_ = caller;  // usr/sys share one register bank, so no bank switch is needed
+    } else {
+        t.r_[13] = 0x03007FE0;
+        t.set_cpsr(caller);
+    }
     t.pc_ = swi_at;
     t.halted_ = false;
     t.intr_wait_ = false;
