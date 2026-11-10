@@ -24,8 +24,9 @@ using s64 = std::int64_t;
 inline constexpr int kScreenWidth = 240;
 inline constexpr int kScreenHeight = 160;
 // Optional widescreen rendering: the PPU can draw extra columns on each side of the 240-pixel
-// view (whatever the game left in VRAM/OAM there). 164 per side gives a 568-pixel (32:9) line.
-inline constexpr int kMaxWideMargin = 164;
+// view (whatever the game left in VRAM/OAM there). 22 per side gives a 284-pixel (16:9) line;
+// wider is not useful because the game stops drawing objects about 32 pixels past the view.
+inline constexpr int kMaxWideMargin = 22;
 inline constexpr int kMaxLineWidth = kScreenWidth + 2 * kMaxWideMargin;
 inline constexpr int kAudioRate = 32768;
 inline constexpr u32 kCpuHz = 16777216;
