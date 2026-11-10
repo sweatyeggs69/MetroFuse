@@ -15,12 +15,13 @@ void set16(std::array<std::uint8_t, 0x8000>& m, std::size_t at, std::uint16_t v)
 
 int main() {
     using metrofuse::cheats::Flags;
-    using metrofuse::cheats::apply;
+    // Qualified: unqualified apply(std::array, ...) also finds std::apply by ADL and fails on libc++.
+    namespace cheats = metrofuse::cheats;
     std::array<std::uint8_t, 0x8000> ram{};
 
     // Nothing enabled, or nothing owned yet: no writes.
-    CHECK(!apply(ram, Flags{}));
-    CHECK(!apply(ram, Flags{true, true, true}));
+    CHECK(!cheats::apply(ram, Flags{}));
+    CHECK(!cheats::apply(ram, Flags{true, true, true}));
     CHECK(get16(ram, kBase) == 0);
 
     // Energy 12 of 399, missiles 3 of 50, power bombs 1 of 5.
@@ -31,26 +32,26 @@ int main() {
     ram[kBase + 8] = 1;
     ram[kBase + 9] = 5;
 
-    CHECK(apply(ram, Flags{true, false, false}));
+    CHECK(cheats::apply(ram, Flags{true, false, false}));
     CHECK(get16(ram, kBase + 0) == 399);
     CHECK(get16(ram, kBase + 4) == 3);  // missiles untouched
     CHECK(ram[kBase + 8] == 1);
 
-    CHECK(apply(ram, Flags{false, true, false}));
+    CHECK(cheats::apply(ram, Flags{false, true, false}));
     CHECK(get16(ram, kBase + 4) == 50);
     CHECK(ram[kBase + 8] == 1);
 
-    CHECK(apply(ram, Flags{false, false, true}));
+    CHECK(cheats::apply(ram, Flags{false, false, true}));
     CHECK(ram[kBase + 8] == 5);
 
     // Already full: reports no change.
-    CHECK(!apply(ram, Flags{true, true, true}));
+    CHECK(!cheats::apply(ram, Flags{true, true, true}));
 
     // Missiles not downloaded yet (max 0): energy still refills, missiles stay 0.
     set16(ram, kBase + 0, 1);
     set16(ram, kBase + 4, 0);
     set16(ram, kBase + 6, 0);
-    CHECK(apply(ram, Flags{true, true, false}));
+    CHECK(cheats::apply(ram, Flags{true, true, false}));
     CHECK(get16(ram, kBase + 0) == 399);
     CHECK(get16(ram, kBase + 4) == 0);
 
