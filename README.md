@@ -63,7 +63,7 @@ Everything game-specific is described in one file, [`src/game.h`](src/game.h). I
 | Widescreen | Done: in gameplay the extra columns are rebuilt from the room layout in RAM (`src/gba/wide_level.cpp`); title, cutscenes and menus keep black sides, as does anything past the room edge. The HUD stays in the original 240-pixel view. Known gap: the ship in the docking bay can look cut off in the extra columns at 21:9 and wider |
 | App icon and theme | Placeholder (KNID's procedural art); needs original MetroFuse artwork |
 | RecompLauncher metadata | Done (`recomplauncher.json`) |
-| Save states across BIOS settings | A state made with the real BIOS usually can't be loaded with the built-in BIOS: Fusion idles inside the BIOS wait in System mode, which the converter can't unwind yet |
+| Save states across BIOS settings | Done: states load after switching between the real and built-in BIOS. Fusion waits inside the BIOS Halt call almost every frame, and the converter backs that call out and runs it again. A state saved on a frame that ends mid-way through a BIOS decompression (about 1 frame in 100, during room loads) is refused with a message; switch the BIOS back to load it |
 
 ## Controls
 

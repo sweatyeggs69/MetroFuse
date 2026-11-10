@@ -134,6 +134,32 @@ int main() {
                     ok2 ? (run2 ? ", game keeps running" : ", GAME STALLED") : "");
         if (!run1 || !run2) ++failures;
 
+        // Real BIOS states taken all through the intro, menus and gameplay load under HLE. Fusion
+        // waits in the BIOS almost every frame; only a frame that ends mid-decompression (a BIOS
+        // routine half-way through) may be refused. Every converted state must keep running.
+        auto sweep_heap = std::make_unique<metrofuse::gba::Gba>(loaded.rom.data, std::filesystem::path{});  // >500 KB: never on the stack
+        auto& sweep = *sweep_heap;
+        sweep.use_bios(bios);
+        sweep.reset();
+        int tried = 0, converted = 0, stalled = 0;
+        for (long fr = 0; fr < 3000; fr += 25) {
+            run(sweep, fr, 25);
+            ++tried;
+            auto conv_heap = std::make_unique<metrofuse::gba::Gba>(loaded.rom.data, std::filesystem::path{});  // >500 KB: never on the stack
+            if (!conv_heap->load_state(sweep.save_state(), &err)) continue;
+            ++converted;
+            std::uint64_t h0 = hash(conv_heap->framebuffer(), 240 * 160);
+            int changes = 0;
+            for (int i = 0; i < 90; ++i) {
+                run(*conv_heap, fr + 25 + i, 1);
+                std::uint64_t h = hash(conv_heap->framebuffer(), 240 * 160);
+                if (h != h0) { ++changes; h0 = h; }
+            }
+            if (changes == 0 && fr >= 1300) ++stalled;  // gameplay always animates
+        }
+        std::printf("real BIOS -> HLE sweep: %d of %d states converted, %d stalled\n", converted, tried, stalled);
+        if (converted * 100 < tried * 95 || stalled) ++failures;
+
         // Booting through the BIOS intro shows the logo, then the game takes over and runs.
         auto boot_heap = std::make_unique<metrofuse::gba::Gba>(loaded.rom.data, std::filesystem::path{});  // >500 KB: never on the stack
         auto& boot = *boot_heap;
