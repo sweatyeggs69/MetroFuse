@@ -59,7 +59,7 @@ Everything game-specific is described in one file, [`src/game.h`](src/game.h). I
 | Build system, CI, packaging (DMG, single-file EXE, AppImage) | Done (from KNID, renamed) |
 | GBA runtime, launcher, options, save states, updater, achievements | Done (game-agnostic) |
 | ROM check | Done: SHA-1 pinned to the USA dump (`AMTE` rev 0, 8 MiB) |
-| Battery saves | 32 KiB SRAM (confirmed from the ROM). **Save signature not set yet** (`game::kSaveHeader`), so saves from other 32 KiB SRAM games are not rejected |
+| Battery saves | Done: 32 KiB SRAM, with the save signature (`game::kSaveHeader`) checked on import so saves from other games are rejected |
 | Widescreen | Done for 16:10 and 16:9: in gameplay the extra columns are rebuilt from the room layout in RAM (`src/gba/wide_level.cpp`); title, cutscenes and menus keep black sides, as does anything past the room edge. The HUD stays in the original 240-pixel view. Wider shapes are not offered because the game stops drawing enemies and other objects about 32 pixels past the original view |
 | App icon and theme | Placeholder (KNID's procedural art); needs original MetroFuse artwork |
 | RecompLauncher metadata | Done (`recomplauncher.json`) |

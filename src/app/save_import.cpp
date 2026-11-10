@@ -41,8 +41,8 @@ bool all_equal(const std::uint8_t* p, std::size_t n, std::uint8_t v) {
 }  // namespace
 
 bool has_game_header(const std::vector<std::uint8_t>& sram) {
-    const std::size_t n = std::strlen(game::kSaveHeader);
-    return n == 0 || (sram.size() >= n && std::memcmp(sram.data(), game::kSaveHeader, n) == 0);
+    const std::string_view h = game::kSaveHeader;
+    return h.empty() || (sram.size() >= h.size() && std::memcmp(sram.data(), h.data(), h.size()) == 0);
 }
 
 NormalizedSave normalize_save(const std::vector<std::uint8_t>& file, const std::string& filename) {
