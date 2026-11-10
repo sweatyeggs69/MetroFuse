@@ -85,8 +85,6 @@ const char* aspect_label(Aspect a) {
         case Aspect::Native: return "Off (original 3:2)";
         case Aspect::R16x10: return "16:10";
         case Aspect::R16x9: return "16:9";
-        case Aspect::R21x9: return "21:9 (experimental)";
-        case Aspect::R32x9: return "32:9 (experimental)";
         default: return name(a);
     }
 }
@@ -120,9 +118,9 @@ void display_tab(Config& config) {
         }
         help_marker("Shows more of the level at the left and right instead of stretching the "
                     "picture. Pixels always stay square, and the HUD stays where it was. Menus "
-                    "and the title screen stay 3:2. 16:10 and 16:9 show real scenery; 21:9 and "
-                    "32:9 are experimental, because the game only loads a little ahead of the "
-                    "original view, so the far edges can show unfinished scenery.");
+                    "and the title screen stay 3:2. Wider shapes are not offered: the game stops "
+                    "drawing enemies a little past the original view, so they would pop in "
+                    "at the sides.");
     }
 
     bool fullscreen = config.get("display.fullscreen", "0") == "1";
