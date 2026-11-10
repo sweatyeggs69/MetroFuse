@@ -44,6 +44,18 @@ int main() {
         CHECK(next_free_slot(used, 5) == -1);
     }
 
+    // Quick save / load default to the Auto slot; F6 / F7 cycle Auto, 1..10, Auto.
+    CHECK(kDefaultSlot == kAutoSlot);
+    CHECK(step_slot(kAutoSlot, +1) == 1);
+    CHECK(step_slot(kSlots, +1) == kAutoSlot);
+    CHECK(step_slot(kAutoSlot, -1) == kSlots);
+    CHECK(step_slot(1, -1) == kAutoSlot);
+    CHECK(step_slot(5, +1) == 6);
+    {
+        std::vector<bool> used(kSlots + 1, false);
+        CHECK(next_free_slot(used, kAutoSlot) == 1);  // "Save to new slot" from Auto starts at slot 1
+    }
+
     fs::path dir = fs::temp_directory_path() / "metrofuse_states_test";
     fs::remove_all(dir);
     const std::string sha = "0123456789abcdef0123456789abcdef01234567";
