@@ -43,6 +43,7 @@ Inherited from the KNID platform layer:
 - **One settings menu (F1)** for display (scaling, widescreen, screen effects) and controls.
 - **Controllers and remapping** for keyboard and gamepads.
 - **Save states**: ten slots plus Auto, with thumbnails, quick save/load and optional auto-load.
+- **Cheats** (F1 > Cheats): unlimited health, missiles and power bombs. Off in RetroAchievements hardcore mode.
 - **Import saves** from RetroArch, mGBA, VBA-M and others.
 - **RetroAchievements**, optional.
 - **Automatic updates** from this repository's releases, with your OK, without touching your saves.

@@ -37,4 +37,11 @@ inline constexpr std::size_t kSaveSize = 32 * 1024;
 // the check. TODO(verify): find Fusion's save signature and set it here.
 inline constexpr const char* kSaveHeader = "";
 
+// Samus's equipment (energy, missiles, power bombs) in IWRAM, used by the cheats menu. Layout
+// from the community disassembly (struct Equipment at gEquipment):
+//   +0 u16 current energy   +2 u16 max energy
+//   +4 u16 current missiles +6 u16 max missiles
+//   +8 u8 current power bombs  +9 u8 max power bombs
+inline constexpr unsigned kEquipmentAddress = 0x03001310;
+
 }  // namespace metrofuse::game

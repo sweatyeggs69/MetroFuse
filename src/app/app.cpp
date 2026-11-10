@@ -19,6 +19,7 @@
 
 #include "app/achievements.h"
 #include "app/bmp.h"
+#include "app/cheats.h"
 #include "app/config.h"
 #include "app/fsutil.h"
 #include "app/platform.h"
@@ -105,6 +106,8 @@ private:
     std::string hotkey_hint(bool brief) const;
     void show_toast(const std::string& text, int slot, toast::Style style = toast::Style::Success);
     void draw_states_tab();
+    void draw_cheats_tab(Config& config);
+    bool cheats_allowed() const;
     std::unique_ptr<states::Store> store_;
     int slot_ = states::kDefaultSlot;
     std::array<SDL_Texture*, states::kSlots + 1> thumb_tex_{};
@@ -230,6 +233,7 @@ bool App::init_window() {
     updater_ = std::make_unique<update::Updater>(METROFUSE_VERSION);
     register_options_tab("Game", [this](Config& c) { draw_game_tab(c); }, /*before_builtin=*/true);
     register_options_tab("States", [this](Config&) { draw_states_tab(); });
+    register_options_tab("Cheats", [this](Config& c) { draw_cheats_tab(c); });
     achievements_->set_restart_handler([this] {
         if (!game_) return;
         game_->flush_save();
@@ -463,6 +467,11 @@ void App::update_emulation() {
             script_keys_ = script_[script_pos_++].second;
         game_->set_keys(std::uint16_t(controls_->poll_frame() | script_keys_));
         game_->run_frame();
+        if (cheats_allowed()) {
+            cheats::apply(game_->iwram_mut(), cheats::Flags{config_.get_bool("cheats.health", false),
+                                                            config_.get_bool("cheats.missiles", false),
+                                                            config_.get_bool("cheats.power_bombs", false)});
+        }
         if (achievements_) achievements_->frame(*game_);
         ++game_frames_;
         while (state_script_pos_ < state_script_.size() && state_script_[state_script_pos_].frame <= game_frames_) {
@@ -1194,6 +1203,35 @@ void App::draw_save_section() {
         if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
+}
+
+bool App::cheats_allowed() const { return !(achievements_ && achievements_->hardcore()); }
+
+void App::draw_cheats_tab(Config& config) {
+    ImGui::SeparatorText("Supplies");
+    const bool allowed = cheats_allowed();
+    ImGui::BeginDisabled(!allowed);
+    struct Toggle { const char* label; const char* key; const char* help; };
+    static constexpr Toggle kToggles[] = {
+        {"Unlimited health", "cheats.health", "Energy stays full, so damage never drains it."},
+        {"Unlimited missiles", "cheats.missiles", "Missiles refill as fast as you fire them. Does not unlock them early."},
+        {"Unlimited power bombs", "cheats.power_bombs", "Power bombs refill after each one. Does not unlock them early."},
+    };
+    for (const Toggle& t : kToggles) {
+        bool on = config.get_bool(t.key, false);
+        if (ImGui::Checkbox(t.label, &on)) {
+            config.set_bool(t.key, on);
+        }
+        ImGui::PushFont(theme::font_small());
+        ImGui::TextDisabled("%s", t.help);
+        ImGui::PopFont();
+    }
+    ImGui::EndDisabled();
+    ImGui::Dummy(ImVec2(0, 4.0f));
+    ImGui::PushFont(theme::font_small());
+    if (!allowed) ImGui::TextDisabled("Cheats are off while RetroAchievements hardcore mode is on.");
+    else ImGui::TextDisabled("Supplies refill up to your current maximum. Cheats stay on until you turn them off.");
+    ImGui::PopFont();
 }
 
 void App::draw_game_tab(Config& config) {
