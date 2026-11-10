@@ -201,7 +201,7 @@ bool big_button(const char* label, ImVec2 size, bool primary) {
 
     // Bounce: lift up a few pixels with an overshoot ease.
     float e = anim * anim * (3 - 2 * anim);
-    float lift = 0.0f;  // feedback is color and the star only; buttons never move
+    float lift = 0.0f;  // feedback is color and the outline only; buttons never move
     ImVec2 a(pos.x, pos.y - lift), b(pos.x + size.x, pos.y + size.y - lift);
     ImDrawList* dl = ImGui::GetWindowDrawList();
     float rounding = size.y * 0.5f;
@@ -218,10 +218,6 @@ bool big_button(const char* label, ImVec2 size, bool primary) {
     const char* end = ImGui::FindRenderedTextEnd(label);
     ImVec2 ts = ImGui::CalcTextSize(label, end);
     ImVec2 tp(a.x + (size.x - ts.x) * 0.5f, a.y + (size.y - ts.y) * 0.5f);
-    if (anim > 0.01f) {
-        draw_star(dl, ImVec2(tp.x - 18, a.y + size.y * 0.5f), 8.0f * e, u32(c.gold, e),
-                  float(ImGui::GetTime()) * 2.0f);
-    }
     dl->AddText(tp, u32(primary ? c.text_on_cyan : c.text), label, end);
     ImGui::PopFont();
     return pressed;
