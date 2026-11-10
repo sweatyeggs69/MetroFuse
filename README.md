@@ -131,7 +131,7 @@ game.
 <summary><b>For maintainers</b></summary>
 
 - **Releases:** bump `VERSION` in `project(metrofuse ...)` in `CMakeLists.txt`, then push a matching
-  tag like `v0.1.0`. GitHub Actions builds all three platforms and publishes the release. Keep the
+  tag like `v1.0.0`. GitHub Actions builds all three platforms and publishes the release. Keep the
   file names (`MetroFuse-<version>-macOS.dmg`, `MetroFuse-<version>-Windows-x64.exe`,
   `MetroFuse-<version>-Linux-x64.AppImage`, `SHA256SUMS.txt`); the in-app updater looks for them.
 
