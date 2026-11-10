@@ -74,6 +74,9 @@ Defaults; change them in Settings > Controls.
 | Previous / next slot | F6 / F7 | Back + D-pad left / right |
 | Fullscreen | F11 | |
 
+Quick save and quick load use the Auto slot until you pick another slot (F6 / F7, or click a slot in
+the States tab). Closing the game also saves to the Auto slot.
+
 ## FAQ
 
 **Which version of the game is supported?**

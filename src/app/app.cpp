@@ -108,7 +108,7 @@ private:
     void show_toast(const std::string& text, int slot, toast::Style style = toast::Style::Success);
     void draw_states_tab();
     std::unique_ptr<states::Store> store_;
-    int slot_ = 1;
+    int slot_ = states::kDefaultSlot;
     std::array<SDL_Texture*, states::kSlots + 1> thumb_tex_{};
     std::array<std::time_t, states::kSlots + 1> thumb_at_{};
     std::string states_msg_;
@@ -241,16 +241,18 @@ bool App::init_window() {
         presenter_->reset_history();
     });
     register_options_tab("Achievements", [this](Config&) { achievements_->draw_tab(); });
-    slot_ = std::clamp(config_.get_int("states.slot", 1), 1, states::kSlots);
+    // "states.current_slot" replaces the old "states.slot" (which defaulted to slot 1), so everyone
+    // starts on Auto; numbered slots are only used once picked.
+    slot_ = std::clamp(config_.get_int("states.current_slot", states::kDefaultSlot), 0, states::kSlots);
     states::set_hotkeys({[this] { if (game_ && screen_ == Screen::Game) quick_save(); },
                          [this] { if (game_ && screen_ == Screen::Game) load_slot(slot_); },
                          [this](int d) {
                              if (!game_ || screen_ != Screen::Game) return;
-                             slot_ = (slot_ - 1 + d + states::kSlots * 4) % states::kSlots + 1;
-                             config_.set_int("states.slot", slot_);
+                             slot_ = states::step_slot(slot_, d);
+                             config_.set_int("states.current_slot", slot_);
                              ensure_store();
                              const states::SlotInfo& i = store_ ? store_->info(slot_) : states::SlotInfo{};
-                             show_toast("Save state slot " + std::to_string(slot_) + (i.exists ? "" : " (empty)"),
+                             show_toast("Save state slot: " + states::slot_name(slot_) + (i.exists ? "" : " (empty)"),
                                         i.exists ? slot_ : -1, toast::Style::Info);
                          },
                          [this] { if (game_ && screen_ == Screen::Game) save_new_slot(); }});
@@ -786,7 +788,7 @@ bool App::save_new_slot() {
         return false;
     }
     slot_ = s;
-    config_.set_int("states.slot", slot_);
+    config_.set_int("states.current_slot", slot_);
     return save_slot(s);
 }
 
@@ -957,9 +959,9 @@ void App::draw_states_tab() {
             dl->AddText(ImVec2(tp.x + (thumb_w - ts.x) / 2, tp.y + thumb_h / 2 + 14), theme::u32(c.text_dim), empty);
             ImGui::Dummy(ImVec2(thumb_w, thumb_h));
         }
-        if (ImGui::IsItemClicked() && slot != states::kAutoSlot) {
+        if (ImGui::IsItemClicked()) {
             slot_ = slot;
-            config_.set_int("states.slot", slot_);
+            config_.set_int("states.current_slot", slot_);
         }
         ImGui::Dummy(ImVec2(0, 2));
         std::string title = states::slot_name(slot) + (i.label.empty() ? "" : ": " + i.label);
@@ -976,15 +978,14 @@ void App::draw_states_tab() {
             ImGui::TextColored(i.exists ? c.bad : c.text_dim, "%s", i.exists ? i.error.c_str() : "No state saved yet");
         }
         ImGui::PopFont();
-        if (slot != states::kAutoSlot) {
-            ImGui::BeginDisabled(!game_);
-            if (ImGui::SmallButton("Save")) save_slot(slot);
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-        }
+        ImGui::BeginDisabled(!game_);
+        if (ImGui::SmallButton("Save")) save_slot(slot);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
         ImGui::BeginDisabled(!usable);
         if (ImGui::SmallButton("Load")) {
-            if (slot != states::kAutoSlot) { slot_ = slot; config_.set_int("states.slot", slot_); }
+            slot_ = slot;
+            config_.set_int("states.current_slot", slot_);
             load_slot(slot);
         }
         ImGui::EndDisabled();

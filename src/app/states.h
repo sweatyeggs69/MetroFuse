@@ -94,6 +94,16 @@ inline int next_free_slot(const std::vector<bool>& used, int current) {
     return -1;
 }
 
+// The slot the quick save / quick load shortcuts use until the user picks another one: Auto.
+// Numbered slots are only used when chosen by hand.
+inline constexpr int kDefaultSlot = kAutoSlot;
+
+// Previous / next slot (F6 / F7): cycles Auto, 1..kSlots, then back to Auto.
+inline int step_slot(int current, int delta) {
+    int n = kSlots + 1;
+    return ((current + delta) % n + n) % n;
+}
+
 // What the Save state shortcut does (states.quick_save): overwrite the current slot, or save
 // into the next empty slot and make that the current one.
 enum class QuickSave { Overwrite, NewSlot };
