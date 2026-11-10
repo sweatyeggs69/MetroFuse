@@ -1,5 +1,6 @@
-// metrofuse_icon: renders the MetroFuse app icon (original artwork: a night sky with a big wishing star)
+// metrofuse_icon: renders the MetroFuse app icon (original artwork: a cyan "MF" monogram on deep navy)
 // into an .iconset folder of PNGs for iconutil. No external image libraries.
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -24,20 +25,38 @@ Rgba over(Rgba dst, Rgba src) {  // src over dst, straight alpha
             (src.b * src.a + dst.b * dst.a * (1 - src.a)) / a, a};
 }
 
-bool in_star(float x, float y, float cx, float cy, float r, float rot) {
-    std::array<std::pair<float, float>, 10> p;
-    for (int i = 0; i < 10; ++i) {
-        float a = rot - 3.14159265f / 2 + float(i) * 3.14159265f / 5;
-        float rr = (i & 1) ? r * 0.47f : r;
-        p[i] = {cx + std::cos(a) * rr, cy + std::sin(a) * rr};
-    }
-    bool in = false;
-    for (int i = 0, j = 9; i < 10; j = i++) {
-        if (((p[i].second > y) != (p[j].second > y)) &&
-            (x < (p[j].first - p[i].first) * (y - p[i].second) / (p[j].second - p[i].second) + p[i].first))
-            in = !in;
-    }
-    return in;
+// Signed distance to a box of half-size (hx, hy) centered at (cx, cy) and rotated by `rot`,
+// with corners rounded by r. Negative inside.
+float sd_box(float x, float y, float cx, float cy, float hx, float hy, float rot, float r) {
+    float c = std::cos(rot), s = std::sin(rot);
+    float px = (x - cx) * c + (y - cy) * s, py = -(x - cx) * s + (y - cy) * c;
+    float qx = std::fabs(px) - hx + r, qy = std::fabs(py) - hy + r;
+    float ox = std::max(qx, 0.0f), oy = std::max(qy, 0.0f);
+    return std::hypot(ox, oy) + std::min(std::max(qx, qy), 0.0f) - r;
+}
+// Box from (x0,y0) to (x1,y1), axis aligned.
+float sd_rect(float x, float y, float x0, float y0, float x1, float y1, float r) {
+    return sd_box(x, y, (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2, 0, r);
+}
+// Capsule of thickness t along the segment a-b (round ends, so two meeting bars form a clean V).
+float sd_capsule(float x, float y, float ax, float ay, float bx, float by, float t) {
+    float dx = bx - ax, dy = by - ay;
+    float h = std::clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy), 0.0f, 1.0f);
+    return std::hypot(x - ax - dx * h, y - ay - dy * h) - t / 2;
+}
+
+// The "MF" monogram, blocky like the MetroFuse wordmark. Unit coordinates.
+float sd_monogram(float u, float v) {
+    const float t = 0.078f, r = 0.012f, top = 0.34f, bot = 0.66f;
+    const float m0 = 0.20f, m1 = 0.475f, mid = (m0 + m1) / 2, f0 = 0.525f;
+    float d = sd_rect(u, v, m0, top, m0 + t, bot, r);                          // M left stem
+    d = std::min(d, sd_rect(u, v, m1 - t, top, m1, bot, r));                   // M right stem
+    d = std::min(d, sd_capsule(u, v, m0 + t * 0.5f, top + t * 0.5f, mid, 0.545f, t));  // M diagonals
+    d = std::min(d, sd_capsule(u, v, m1 - t * 0.5f, top + t * 0.5f, mid, 0.545f, t));
+    d = std::min(d, sd_rect(u, v, f0, top, f0 + t, bot, r));                   // F stem
+    d = std::min(d, sd_rect(u, v, f0, top, 0.80f, top + t, r));                // F top bar
+    d = std::min(d, sd_rect(u, v, f0, 0.465f, 0.755f, 0.465f + t * 0.9f, r));  // F middle bar
+    return d;
 }
 
 // Superellipse "squircle" mask like macOS icons, in unit coordinates [0,1].
@@ -46,29 +65,27 @@ bool in_squircle(float u, float v) {
     return std::pow(x, 5.0f) + std::pow(y, 5.0f) <= 1.0f;
 }
 
+// Original artwork: a deep navy tile with a purple glow and a cyan-to-white "MF" monogram with a
+// navy outline, matching the MetroFuse wordmark and the launcher theme.
 Rgba shade(float u, float v) {
     Rgba out{0, 0, 0, 0};
     if (!in_squircle(u, v)) return out;
-    Rgba top{0.11f, 0.08f, 0.24f, 1}, bottom{0.36f, 0.18f, 0.48f, 1};
+    Rgba top{0.04f, 0.08f, 0.19f, 1}, bottom{0.14f, 0.11f, 0.36f, 1};
     out = mix(top, bottom, v);
-    // Twinkles (fixed positions).
-    const float dots[][3] = {{0.22f, 0.24f, 0.010f}, {0.74f, 0.20f, 0.008f}, {0.30f, 0.70f, 0.007f},
-                             {0.80f, 0.62f, 0.009f}, {0.62f, 0.80f, 0.006f}, {0.18f, 0.50f, 0.006f}};
-    for (auto& d : dots) {
-        float dist = std::hypot(u - d[0], v - d[1]);
-        if (dist < d[2] * 2.5f) out = over(out, {1, 0.97f, 0.92f, std::max(0.0f, 1 - dist / (d[2] * 2.5f))});
+    // Soft purple glow behind the letters.
+    float g = std::hypot(u - 0.5f, (v - 0.55f) * 1.2f);
+    out = over(out, {0.40f, 0.30f, 0.80f, std::max(0.0f, 0.45f - g * 1.3f)});
+    // Monogram: navy outline, then the gradient fill (cyan on the left to near white on the right).
+    float d = sd_monogram(u, v);
+    const float outline = 0.016f;
+    if (d < outline) out = over(out, {0.24f, 0.22f, 0.52f, 1});
+    if (d < 0) {
+        float k = std::clamp((u - 0.20f) / 0.60f, 0.0f, 1.0f);
+        Rgba fill = mix({0.18f, 0.76f, 0.89f, 1}, {0.93f, 0.99f, 1.0f, 1}, k);
+        // Slight top highlight, like the wordmark's sheen.
+        fill = mix(fill, {1, 1, 1, 1}, std::max(0.0f, 0.42f - v) * 0.6f);
+        out = over(out, fill);
     }
-    // Soft pink glow behind the star.
-    float g = std::hypot(u - 0.5f, v - 0.52f);
-    out = over(out, {1.0f, 0.56f, 0.73f, std::max(0.0f, 0.55f - g * 1.6f)});
-    // Star with a pink rim and a highlight.
-    float rot = -0.18f;
-    if (in_star(u, v, 0.5f, 0.53f, 0.315f, rot)) out = over(out, {0.93f, 0.44f, 0.63f, 1});
-    if (in_star(u, v, 0.5f, 0.53f, 0.275f, rot)) out = over(out, {1.0f, 0.84f, 0.36f, 1});
-    if (in_star(u, v, 0.48f, 0.50f, 0.13f, rot)) out = over(out, {1.0f, 0.95f, 0.70f, 0.75f});
-    // Two little companion stars.
-    if (in_star(u, v, 0.80f, 0.30f, 0.055f, 0.3f)) out = over(out, {1.0f, 0.84f, 0.36f, 0.95f});
-    if (in_star(u, v, 0.24f, 0.78f, 0.040f, -0.4f)) out = over(out, {1.0f, 0.70f, 0.82f, 0.95f});
     return out;
 }
 
