@@ -26,7 +26,7 @@
 1. **Build or download** MetroFuse for your system and open it.
 2. **Choose your ROM.** Click **Choose ROM...** and pick your dump. MetroFuse only remembers where
    the file is; it never copies, uploads or changes it.
-3. **Play.** Press **Play**. Use **Create Shortcut** to start the game directly next time.
+3. **Play.** Press **Play**. To start the game directly next time, add a shortcut in **Settings > Game**.
 
 ## Features
 
