@@ -163,6 +163,9 @@ bool Gba::load_state(const std::vector<u8>& data, std::string* error) {
     sram_dirty_ = false;  // the save file is updated the next time the game writes SRAM
     sram_dirty_frames_ = 0;
     wide_level_ = {};
+    wide_scene_ = false;
+    wide_main_bg_ = -1;
+    wide_hud_prio_ = -1;
     return true;
 }
 
