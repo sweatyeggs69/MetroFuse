@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=MetroFuse
+GenericName=Metroid Fusion (native)
+Comment=Play your own copy of Metroid Fusion natively
+Exec=metrofuse
+Icon=metrofuse
+StartupWMClass=MetroFuse
+Terminal=false
+Categories=Game;
