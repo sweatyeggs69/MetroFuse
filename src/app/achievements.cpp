@@ -68,11 +68,16 @@ std::string ra_md5_hex(const std::uint8_t* data, std::size_t size) {
     return out;
 }
 
-std::uint32_t ra_read_memory(const gba::Gba& gba, std::uint32_t address, std::uint8_t* buffer,
+std::uint32_t ra_read_memory(const gba::Gba* gba, std::uint32_t address, std::uint8_t* buffer,
                              std::uint32_t num_bytes) {
+    if (!gba) {
+        std::uint32_t n = 0;
+        for (; n < num_bytes && address + n < 0x58000; ++n) buffer[n] = 0;
+        return n;
+    }
     // rcheevos GBA map: 0x00000 IWRAM (32 KiB), 0x08000 EWRAM (256 KiB), 0x48000 cartridge SRAM
     // (64 KiB window; this game has 32 KiB, the rest reads as 0).
-    auto iw = gba.iwram(), ew = gba.ewram(), sr = gba.sram();
+    auto iw = gba->iwram(), ew = gba->ewram(), sr = gba->sram();
     for (std::uint32_t i = 0; i < num_bytes; ++i) {
         std::uint32_t a = address + i;
         if (a < 0x8000) buffer[i] = a < iw.size() ? iw[a] : 0;
@@ -153,8 +158,8 @@ struct Achievements::Impl {
     static std::uint32_t RC_CCONV read_memory(std::uint32_t address, std::uint8_t* buffer, std::uint32_t num_bytes,
                                               rc_client_t* c) {
         Impl* s = self(c);
-        if (!s || !s->gba) return 0;
-        return ra_read_memory(*s->gba, address, buffer, num_bytes);
+        if (!s) return 0;
+        return ra_read_memory(s->gba, address, buffer, num_bytes);
     }
 
     static void RC_CCONV server_call(const rc_api_request_t* request, rc_client_server_callback_t callback,
@@ -613,22 +618,34 @@ void Achievements::Impl::draw_tab() {
         return;
     }
 
-    // One line: account, then Options and Sign out on the right.
+    // One line: account, then Options and Sign out on the right. The account text gets shorter, or
+    // moves to its own line below, rather than running under the buttons.
     const rc_client_user_t* u = rc_client_get_user_info(client);
-    ImGui::SameLine(0, 24);
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(c.text_dim, "%s, %u points (%u softcore)", u && u->display_name ? u->display_name : "",
-                       u ? u->score : 0, u ? u->score_softcore : 0);
+    const char* name = u && u->display_name ? u->display_name : "";
+    char full[192], shorter[160];
+    std::snprintf(full, sizeof(full), "%s, %u points (%u softcore)", name, u ? u->score : 0, u ? u->score_softcore : 0);
+    std::snprintf(shorter, sizeof(shorter), "%s, %u points", name, u ? u->score : 0);
     const ImGuiStyle& st = ImGui::GetStyle();
     float buttons = ImGui::CalcTextSize("Options").x + ImGui::CalcTextSize("Sign out").x + st.FramePadding.x * 4 +
                     st.ItemSpacing.x;
-    ImGui::SameLine(std::max(ImGui::GetCursorPosX(), ImGui::GetWindowContentRegionMax().x - buttons));
+    ImGui::SameLine(0, 24);
+    float right = ImGui::GetWindowContentRegionMax().x - buttons;
+    float room = right - ImGui::GetCursorPosX() - st.ItemSpacing.x;
+    const char* account = ImGui::CalcTextSize(full).x <= room ? full : ImGui::CalcTextSize(shorter).x <= room ? shorter : nullptr;
+    if (account) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(c.text_dim, "%s", account);
+        ImGui::SameLine(std::max(ImGui::GetCursorPosX(), right));
+    } else {
+        ImGui::SameLine(std::max(ImGui::GetCursorPosX(), right));
+    }
     if (ImGui::Button("Options")) ImGui::OpenPopup("##ra_options");
     ImGui::SameLine();
     if (ImGui::Button("Sign out")) {
         sign_out();
         return;
     }
+    if (!account) ImGui::TextColored(c.text_dim, "%s", full);
     if (!login_message.empty()) ImGui::TextColored(login_message_error ? c.bad : c.text_dim, "%s", login_message.c_str());
 
     if (ImGui::BeginPopup("##ra_options")) {
@@ -733,10 +750,14 @@ void Achievements::frame(const gba::Gba& gba) {
     s.gba = nullptr;  // memory is only read during do_frame
 }
 
-void Achievements::idle() {
+void Achievements::idle(const gba::Gba* game) {
     Impl& s = *impl_;
+    // The game's achievement list arrives here, and rcheevos checks every address it uses right
+    // away, so the game's memory must be readable now, not only inside frame().
+    s.gba = game;
     http::pump();
     if (!s.frame_ran) rc_client_idle(s.client);
+    s.gba = nullptr;
     s.frame_ran = false;
     s.flush_toasts();
     if (s.restart_pending) {
