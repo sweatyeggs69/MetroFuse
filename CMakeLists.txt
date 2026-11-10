@@ -190,19 +190,16 @@ if(TARGET SDL3::SDL3)
             COMMENT "Embedding Fredoka ${weight}")
         list(APPEND metrofuse_font_cpp "${out}")
     endforeach()
-    # Optional logo for the launcher card: drop original artwork (a small palette PNG, never game
-    # art) at assets/logo/metrofuse-logo.png. Without it the card shows the text title.
-    set(metrofuse_have_logo OFF)
-    if(EXISTS "${PROJECT_SOURCE_DIR}/assets/logo/metrofuse-logo.png")
-        set(metrofuse_have_logo ON)
-        set(out "${CMAKE_CURRENT_BINARY_DIR}/image_logo.cpp")
-        add_custom_command(OUTPUT "${out}"
-            COMMAND "${CMAKE_COMMAND}" -DINPUT=${PROJECT_SOURCE_DIR}/assets/logo/metrofuse-logo.png -DOUTPUT=${out}
-                    -DSYMBOL=metrofuse_image_logo -P ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
-            DEPENDS assets/logo/metrofuse-logo.png cmake/embed.cmake
-            COMMENT "Embedding the MetroFuse logo")
-        list(APPEND metrofuse_font_cpp "${out}")
-    endif()
+    # The MetroFuse wordmark on the launcher card (assets/logo/metrofuse-logo.png, original artwork).
+    # Always embedded: an optional EXISTS check was only evaluated at configure time, so build
+    # folders configured before the file was added never picked it up.
+    set(out "${CMAKE_CURRENT_BINARY_DIR}/image_logo.cpp")
+    add_custom_command(OUTPUT "${out}"
+        COMMAND "${CMAKE_COMMAND}" -DINPUT=${PROJECT_SOURCE_DIR}/assets/logo/metrofuse-logo.png -DOUTPUT=${out}
+                -DSYMBOL=metrofuse_image_logo -P ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
+        DEPENDS assets/logo/metrofuse-logo.png cmake/embed.cmake
+        COMMENT "Embedding the MetroFuse logo")
+    list(APPEND metrofuse_font_cpp "${out}")
     # License texts compiled in (shown in F1 > About and by --licenses).
     foreach(pair "license;LICENSE" "notices;THIRD_PARTY_NOTICES.md" "fredoka_ofl;assets/fonts/OFL.txt")
         list(GET pair 0 name)
@@ -230,9 +227,6 @@ if(TARGET SDL3::SDL3)
     target_link_libraries(metrofuse_launcher PUBLIC metrofuse_options metrofuse_gba metrofuse_core metrofuse_saves metrofuse_states imgui SDL3::SDL3)
     target_link_libraries(metrofuse_launcher PRIVATE rcheevos)
     target_compile_definitions(metrofuse_launcher PRIVATE METROFUSE_VERSION="${PROJECT_VERSION}")
-    if(metrofuse_have_logo)
-        target_compile_definitions(metrofuse_launcher PRIVATE METROFUSE_HAVE_LOGO=1)
-    endif()
     if(APPLE)
         target_link_libraries(metrofuse_launcher PRIVATE "-framework Security" "-framework CoreFoundation")
     elseif(WIN32)
