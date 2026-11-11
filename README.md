@@ -22,21 +22,9 @@
 > MetroFuse is an unofficial fan project. It is not affiliated with, endorsed or sponsored by
 > Nintendo. Metroid and all related names are trademarks of their respective owners.
 
-> [!NOTE]
-> **Early development.** MetroFuse is built on the same runtime, launcher, platform layer and
-> tooling as [KNID](https://github.com/sweatyeggs69/KNID). The game-specific parts are still being
-> filled in; see [Porting status](#porting-status).
-
-## Getting started
-
-1. **Build or download** MetroFuse for your system and open it.
-2. **Choose your ROM.** Click **Choose ROM...** and pick your dump. MetroFuse only remembers where
-   the file is; it never copies, uploads or changes it.
-3. **Play.** Press **Play**. To start the game directly next time, add a shortcut in **Settings > Game**.
+[![Verified developer on RecompStore](https://recompstore.com/assets/press/verified-dark.svg)](https://recompstore.com/dev/sweatyeggs69)
 
 ## Features
-
-Inherited from the KNID platform layer:
 
 - **Native on macOS, Windows and Linux**, with smooth, tear-free video and sound.
 - **Themed launcher** with **Continue** to pick up where you left off.
@@ -54,22 +42,6 @@ Inherited from the KNID platform layer:
 - **RetroAchievements**, optional.
 - **Automatic updates** from this repository's releases, with your OK, without touching your saves.
 - **Optional BIOS** with the original boot animation (not required).
-
-## Porting status
-
-Everything game-specific is described in one file, [`src/game.h`](src/game.h). Items marked
-`TODO(verify)` there must be checked against a real dump before the first release.
-
-| Area | Status |
-| --- | --- |
-| Build system, CI, packaging (DMG, single-file EXE, AppImage) | Done (from KNID, renamed) |
-| GBA runtime, launcher, options, save states, updater, achievements | Done (game-agnostic) |
-| ROM check | Done: SHA-1 pinned to the USA dump (`AMTE` rev 0, 8 MiB) |
-| Battery saves | Done: 32 KiB SRAM, with the save signature (`game::kSaveHeader`) checked on import so saves from other games are rejected |
-| Widescreen | Done for 16:10 and 16:9: in gameplay the extra columns are rebuilt from the room layout in RAM (`src/gba/wide_level.cpp`); title, cutscenes and menus keep black sides, as does anything past the room edge. The HUD stays in the original 240-pixel view. Wider shapes are not offered because the game stops drawing enemies and other objects about 32 pixels past the original view |
-| App icon and theme | Done: original MF icon and logo. The launcher and F1 menu use the shared GBA-port theme (`src/app/theme.cpp`, the same in every port, styled after Bookie); MetroFuse's colors are in `src/app/theme_colors.cpp` |
-| RecompLauncher metadata | Done (`recomplauncher.json`) |
-| Save states across BIOS settings | Done: states load after switching between the real and built-in BIOS. Fusion waits inside the BIOS Halt call almost every frame, and the converter backs that call out and runs it again. A state saved on a frame that ends mid-way through a BIOS decompression (about 1 frame in 100, during room loads) is refused with a message; switch the BIOS back to load it |
 
 ## Controls
 
