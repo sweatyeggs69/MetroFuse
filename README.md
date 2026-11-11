@@ -14,6 +14,7 @@
   <a href="https://github.com/sweatyeggs69/MetroFuse/actions/workflows/build.yml"><img alt="Build" src="https://github.com/sweatyeggs69/MetroFuse/actions/workflows/build.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-5b8def">
+  <a href="https://recomplauncher.com/game/metrofuse"><img alt="Get it on RecompLauncher" src="https://recomplauncher.com/assets/press/launcher/badge-dark.svg"></a>
 </p>
 
 > [!IMPORTANT]
