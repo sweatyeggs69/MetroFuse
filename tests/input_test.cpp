@@ -271,6 +271,9 @@ void actions(std::map<std::string, std::string>& ini, Manager& m) {
     press(SDL_GAMEPAD_BUTTON_LEFT_PADDLE1, false);
     CHECK(m.poll_frame() == 0);
     press(SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2, true);
+    // L alone first, so the game is aiming diagonally before Down arrives and Samus doesn't crouch.
+    CHECK(m.poll_frame() == bit(Button::L));
+    CHECK(m.poll_frame() == bit(Button::L));
     CHECK(m.poll_frame() == (bit(Button::L) | bit(Button::Down)));
     press(SDL_GAMEPAD_BUTTON_DPAD_UP, true);
     CHECK(m.poll_frame() == (bit(Button::L) | bit(Button::Down)));
@@ -289,7 +292,7 @@ void actions(std::map<std::string, std::string>& ini, Manager& m) {
     ini["input.right_stick_aim"] = "true";
     m.reload();
     CHECK(m.poll_frame() == bit(Button::L));
-    tilt(SDL_GAMEPAD_AXIS_RIGHTY, 32767);
+    tilt(SDL_GAMEPAD_AXIS_RIGHTY, 32767);  // straight from up: already diagonal, Down right away
     CHECK(m.poll_frame() == (bit(Button::L) | bit(Button::Down)));
     tilt(SDL_GAMEPAD_AXIS_RIGHTY, 5000);  // inside the dead zone
     CHECK(m.poll_frame() == 0);

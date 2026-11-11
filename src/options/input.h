@@ -164,6 +164,8 @@ private:
     bool missiles_armed_ = false;
     bool toggle_was_held_ = false;
     int last_aim_ = 0;  // -1 up, +1 down, 0 none, as sent last frame
+    int aim_frames_ = 0;  // frames the current aim has been held
+    static constexpr int kAimLeadFrames = 2;  // L alone before Down, so standing Samus doesn't crouch
     std::string message_;
     Hotkey hotkey_remap_ = Hotkey::Count;
     bool shortcuts_enabled_ = true;

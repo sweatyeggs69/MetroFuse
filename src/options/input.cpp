@@ -717,7 +717,8 @@ std::uint16_t Manager::poll_frame() {
 
     // Diagonal aim: the game aims diagonally while L is held, down when Down is held too. Once it
     // aims down it stays down until L is let go or Up is pressed, so going straight from aiming
-    // down to aiming up adds one frame of Up.
+    // down to aiming up adds one frame of Up. A fresh Down press while standing crouches unless
+    // the game is already aiming diagonally, so aiming down starts with a few frames of L alone.
     bool up = held(Action::AimUp, threshold), down = held(Action::AimDown, threshold);
     if (config_.right_stick_aim) {
         for (const auto& d : devices_) {
@@ -728,9 +729,14 @@ std::uint16_t Manager::poll_frame() {
         }
     }
     const int aim = down ? 1 : up ? -1 : 0;
+    aim_frames_ = (aim == 0 || last_aim_ == 0) ? 0 : std::min(aim_frames_ + 1, kAimLeadFrames);
     if (aim > 0) {
-        mask |= bit(Button::L) | bit(Button::Down);
-        mask &= std::uint16_t(~bit(Button::Up));
+        mask |= bit(Button::L);
+        mask &= std::uint16_t(~(bit(Button::Up) | bit(Button::Down)));
+        if (aim_frames_ >= kAimLeadFrames || last_aim_ < 0) {
+            mask |= bit(Button::Down);
+            aim_frames_ = kAimLeadFrames;
+        }
     } else if (aim < 0) {
         mask |= bit(Button::L);
         mask &= std::uint16_t(~bit(Button::Down));
