@@ -746,47 +746,64 @@ std::uint16_t Manager::poll_frame() {
     return mask;
 }
 
-void Manager::start_remap(Button only) {
+void Manager::start_remap(Button only, Source source) {
     start_remap();
     for (int i = 0; i < int(std::size(kRemapOrder)); ++i)
         if (kRemapOrder[i] == only) remap_index_ = i;
     remap_single_ = true;
+    remap_source_ = source;
     message_.clear();
 }
 
 Button Manager::remap_target() const { return remapping() ? kRemapOrder[remap_index_] : Button::Count; }
 
-void Manager::start_remap(Hotkey only) {
+void Manager::start_remap(Hotkey only, Source source) {
     if (only == Hotkey::Count) return;
     remap_index_ = -1;
     remap_single_ = false;
     action_remap_ = Action::Count;
     hotkey_remap_ = only;
+    remap_source_ = source;
     capture_.clear();
     message_.clear();
 }
 
-void Manager::clear(Hotkey h) {
+void Manager::clear(Hotkey h, Source source) {
     if (h == Hotkey::Count) return;
-    config_.hotkeys[int(h)].clear();
+    auto& list = config_.hotkeys[int(h)];
+    list.erase(std::remove_if(list.begin(), list.end(),
+                              [&](const Chord& c) { return !c.empty() && matches(source, c.front()); }),
+               list.end());
     save();
     message_ = std::string(name(h)) + " unbound";
 }
 
-void Manager::start_remap(Action only) {
+void Manager::start_remap(Action only, Source source) {
     if (only == Action::Count) return;
     start_remap();  // arms the stick axes
     remap_index_ = -1;
     hotkey_remap_ = Hotkey::Count;
     action_remap_ = only;
+    remap_source_ = source;
     message_.clear();
 }
 
-void Manager::clear(Action a) {
+void Manager::clear(Action a, Source source) {
     if (a == Action::Count) return;
-    config_.actions[int(a)].clear();
+    auto& list = config_.actions[int(a)];
+    list.erase(std::remove_if(list.begin(), list.end(), [&](const Binding& b) { return matches(source, b); }),
+               list.end());
     save();
     message_ = std::string(name(a)) + " unbound";
+}
+
+void Manager::clear(Button b, Source source) {
+    if (b == Button::Count) return;
+    auto& list = config_.buttons[int(b)];
+    list.erase(std::remove_if(list.begin(), list.end(), [&](const Binding& x) { return matches(source, x); }),
+               list.end());
+    save();
+    message_ = std::string(name(b)) + ": " + describe(b);
 }
 
 void Manager::cancel_remap() {
@@ -808,6 +825,7 @@ void Manager::start_remap() {
     remap_index_ = 0;
     remap_single_ = false;
     action_remap_ = Action::Count;
+    remap_source_ = Source::Any;
     const int threshold = 32767 * config_.deadzone_percent / 100;
     for (int a = 0; a < SDL_GAMEPAD_AXIS_COUNT; ++a) {
         bool centered = true;
@@ -827,6 +845,18 @@ void Manager::start_remap() {
 
 std::string Manager::remap_prompt() const {
     if (!remapping()) return {};
+    const char* what = remap_source_ == Source::Keyboard ? "Press a key"
+                       : remap_source_ == Source::Controller ? "Press a controller button"
+                                                              : nullptr;
+    auto now = [&](std::string d) { return "  (now: " + d + ")"; };
+    if (what) {
+        if (hotkey_remap_ != Hotkey::Count)
+            return std::string(what) + " for " + name(hotkey_remap_) + now(describe(hotkey_remap_, remap_source_));
+        if (action_remap_ != Action::Count)
+            return std::string(what) + " for " + name(action_remap_) + now(describe(action_remap_, remap_source_));
+        const Button b = kRemapOrder[remap_index_];
+        return std::string(what) + " for " + name(b) + now(describe(b, remap_source_));
+    }
     if (hotkey_remap_ != Hotkey::Count)
         return std::string("Press a key or controller button(s) for ") + name(hotkey_remap_) +
                "  (now: " + describe(hotkey_remap_) + ")";
@@ -838,16 +868,19 @@ std::string Manager::remap_prompt() const {
 }
 
 void Manager::assign(const Binding& bind) {
+    if (!matches(remap_source_, bind)) {
+        advance();  // the other device: keep the current binding
+        return;
+    }
     // An input drives one GBA button or extra action only, and a key is either that or a shortcut.
     for (auto& list : config_.buttons) list.erase(std::remove(list.begin(), list.end(), bind), list.end());
     for (auto& list : config_.actions) list.erase(std::remove(list.begin(), list.end(), bind), list.end());
     for (auto& list : config_.hotkeys) list.erase(std::remove(list.begin(), list.end(), Chord{bind}), list.end());
-    // Replace this button's bindings of the same device type (keyboard vs controller).
+    // Replace this button's bindings of the same device type (keyboard and mouse vs controller).
     auto& list = action_remap_ != Action::Count ? config_.actions[int(action_remap_)]
                                                 : config_.buttons[int(kRemapOrder[remap_index_])];
-    const bool is_key = bind.kind == Binding::Kind::Key;
-    list.erase(std::remove_if(list.begin(), list.end(),
-                              [&](const Binding& b) { return (b.kind == Binding::Kind::Key) == is_key; }),
+    const bool is_key = is_keyboard(bind);
+    list.erase(std::remove_if(list.begin(), list.end(), [&](const Binding& b) { return is_keyboard(b) == is_key; }),
                list.end());
     list.insert(list.begin(), bind);
     advance();
@@ -916,18 +949,20 @@ void Manager::reset_to_defaults() {
     message_ = "Controls reset to defaults";
 }
 
-std::string Manager::describe(Button b) const {
+std::string Manager::describe(Button b, Source source) const {
     std::string s;
     for (const auto& bind : config_.buttons[int(b)]) {
+        if (!matches(source, bind)) continue;
         if (!s.empty()) s += ", ";
         s += display_name(bind);
     }
     return s.empty() ? "None" : s;
 }
 
-std::string Manager::describe(Hotkey h) const {
+std::string Manager::describe(Hotkey h, Source source) const {
     std::string s;
     for (const auto& c : config_.hotkeys[int(h)]) {
+        if (c.empty() || !matches(source, c.front())) continue;
         if (!s.empty()) s += ", ";
         std::string part;
         for (const auto& b : c) part += (part.empty() ? "" : " + ") + display_name(b);  // "Back Button + Right Bumper"
@@ -936,9 +971,10 @@ std::string Manager::describe(Hotkey h) const {
     return s.empty() ? "None" : s;
 }
 
-std::string Manager::describe(Action a) const {
+std::string Manager::describe(Action a, Source source) const {
     std::string s;
     for (const auto& bind : config_.actions[int(a)]) {
+        if (!matches(source, bind)) continue;
         if (!s.empty()) s += ", ";
         s += display_name(bind);
     }
@@ -989,12 +1025,16 @@ bool Manager::handle_event(const SDL_Event& e) {
                 if (sc == SDL_SCANCODE_ESCAPE) {
                     hotkey_remap_ = Hotkey::Count;  // keep the current binding
                     capture_.clear();
+                } else if (remap_source_ == Source::Controller) {
+                    hotkey_remap_ = Hotkey::Count;  // the other device: keep the current binding
+                    capture_.clear();
                 } else if (!reserved_hotkey_key(sc)) {
                     assign_hotkey({key(sc)});
                 }
                 return true;
             }
             case SDL_EVENT_KEY_UP:
+                return false;  // releases go on to the menu, so the key that started this isn't stuck
             case SDL_EVENT_GAMEPAD_AXIS_MOTION:
             case SDL_EVENT_JOYSTICK_BUTTON_DOWN:
             case SDL_EVENT_JOYSTICK_AXIS_MOTION:
@@ -1002,6 +1042,11 @@ bool Manager::handle_event(const SDL_Event& e) {
                 return true;
             case SDL_EVENT_GAMEPAD_BUTTON_DOWN: {
                 const Binding b = pad(SDL_GamepadButton(e.gbutton.button));
+                if (remap_source_ == Source::Keyboard) {
+                    hotkey_remap_ = Hotkey::Count;  // the other device: keep the current binding
+                    suppressed_.push_back(b.code);
+                    return true;
+                }
                 if (capture_.size() < 2 && std::find(capture_.begin(), capture_.end(), b) == capture_.end())
                     capture_.push_back(b);
                 return true;
@@ -1012,7 +1057,7 @@ bool Manager::handle_event(const SDL_Event& e) {
                     for (const auto& b : capture_) suppressed_.push_back(b.code);
                     assign_hotkey(capture_);
                 }
-                return true;
+                return false;  // the menu still sees the release
             default:
                 return false;
         }
@@ -1070,7 +1115,7 @@ bool Manager::handle_event(const SDL_Event& e) {
             return true;
         }
         case SDL_EVENT_KEY_UP:
-            return true;
+            return false;  // releases go on to the menu, so the key that started this isn't stuck
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
             assign(pad(SDL_GamepadButton(e.gbutton.button)));
             return true;
@@ -1114,11 +1159,13 @@ bool Manager::handle_event(const SDL_Event& e) {
         }
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
             if (!bindable_mouse(e.button.button)) return false;  // left/right clicks still work the menu
+            if (remap_source_ == Source::Controller) return false;
             assign(mouse(e.button.button));
             return true;
         case SDL_EVENT_JOYSTICK_BUTTON_UP:
-        case SDL_EVENT_MOUSE_BUTTON_UP:
             return true;
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            return false;
         default:
             return false;
     }
