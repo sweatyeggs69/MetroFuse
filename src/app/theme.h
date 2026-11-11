@@ -1,29 +1,33 @@
 #pragma once
-// MetroFuse launcher theme: deep navy space, icy cyan chrome, orb purple and a pale gold accent, after the
-// colors of the Metroid Fusion logo. Original artwork only:
-// everything is drawn procedurally; the font is Fredoka (SIL OFL 1.1, see assets/fonts/OFL.txt).
+// Launcher and menu theme, shared by every GBA port (KNID, MetroFuse, ...): DM Sans text, flat
+// tinted surfaces, thin borders, 12 px rounded buttons and one accent color, after the Bookie
+// web app. Every port keeps this file and theme.cpp the same; only theme_colors.cpp (the game's
+// palette) differs. Fonts: DM Sans (SIL OFL 1.1) and a few Lucide icons (ISC), in assets/fonts.
 
 #include <imgui.h>
 
 namespace metrofuse::theme {
 
-// Shared palette so other panels (options, pause menu) match the launcher.
+// Color tokens. Surfaces go from darkest (surface) to lightest (high); all of them are tinted
+// toward the game's colors. Defined per game in theme_colors.cpp.
 struct Palette {
-    ImVec4 navy;         // window background, deep navy (logo outline)
-    ImVec4 navy_light;   // panels / frames
-    ImVec4 navy_hover;
-    ImVec4 cyan;         // primary buttons, accents (logo lettering)
-    ImVec4 cyan_hover;
-    ImVec4 cyan_active;
-    ImVec4 cyan_soft;    // headers, selection
-    ImVec4 gold;         // highlights, focus (logo bolt)
-    ImVec4 text;         // cool white
-    ImVec4 text_dim;
-    ImVec4 text_on_cyan;  // dark navy text for cyan buttons
-    ImVec4 good;         // verified / ok
-    ImVec4 bad;          // errors
-    ImVec4 purple;       // background glow (logo orb)
-    ImVec4 silver;       // subtle borders (logo ring)
+    ImVec4 surface;        // window and menu background
+    ImVec4 card;           // launcher card and settings sections
+    ImVec4 raised;         // fields, outline buttons, selected sidebar entry
+    ImVec4 high;           // hovered fields and buttons, slider tracks
+    ImVec4 line;           // 1 px borders and separators
+    ImVec4 ink;            // main text
+    ImVec4 ink_muted;      // descriptions, secondary text
+    ImVec4 ink_faint;      // hints, status lines
+    ImVec4 accent;         // primary buttons, checkmarks, sliders, the selected page marker
+    ImVec4 accent_hover;
+    ImVec4 accent_active;
+    ImVec4 accent_soft;    // selection backgrounds, tags
+    ImVec4 on_accent;      // text on accent buttons
+    ImVec4 highlight;      // keyboard / controller focus ring, notices
+    ImVec4 good;           // verified / ok
+    ImVec4 bad;            // errors, Quit hover
+    ImVec4 glow;           // soft background glow behind the launcher
 };
 const Palette& palette();
 inline ImU32 u32(const ImVec4& c, float alpha_mul = 1.0f) {
@@ -34,17 +38,50 @@ inline ImU32 u32(const ImVec4& c, float alpha_mul = 1.0f) {
 // Call once after ImGui::CreateContext() and before the first NewFrame().
 void apply(float ui_scale);
 
-ImFont* font_body();   // ~20 px
-ImFont* font_title();  // ~44 px
-ImFont* font_small();  // ~16 px
-ImFont* font_button(); // ~23 px semibold
+ImFont* font_body();     // 17 px regular
+ImFont* font_small();    // 15 px regular
+ImFont* font_button();   // 17 px semibold: buttons, sidebar, section titles
+ImFont* font_title();    // 30 px bold: page titles
 
-// Background: navy-to-purple gradient with a soft orb glow, filling [min, max].
+// Lucide icons, usable in any label drawn with the theme's fonts ("" ICON_PLAY " Play").
+#define METROFUSE_ICON_PLAY "\xee\x85\x80"         // U+E140
+#define METROFUSE_ICON_RESTART "\xee\x85\x8c"      // U+E14C rotate-ccw
+#define METROFUSE_ICON_SETTINGS "\xee\x85\x98"     // U+E158
+#define METROFUSE_ICON_LOG_OUT "\xee\x84\x92"      // U+E112
+#define METROFUSE_ICON_X "\xee\x86\xb2"            // U+E1B2
+#define METROFUSE_ICON_CHECK "\xee\x81\xb0"        // U+E070
+#define METROFUSE_ICON_CHEVRON_DOWN "\xee\x81\xb1" // U+E071
+#define METROFUSE_ICON_CHEVRON_RIGHT "\xee\x81\xb3"// U+E073
+#define METROFUSE_ICON_FOLDER_OPEN "\xee\x89\x87"  // U+E247
+
+// Background when no game frame is showing: the surface color with a soft accent glow.
 void draw_backdrop(ImDrawList* dl, ImVec2 min, ImVec2 max);
-// Large rounded button; hover and focus show a gold outline.
-// primary = cyan, otherwise navy-light.
-bool big_button(const char* label, ImVec2 size, bool primary = true);
+
+enum class ButtonKind { Primary, Outline, Ghost };
+// Large launcher button. Primary is filled with the accent, Outline is a raised surface with a
+// border, Ghost has no background until hovered. icon is an optional METROFUSE_ICON_* string.
+// Keyboard / controller focus shows a ring in the highlight color.
+bool button(const char* label, ImVec2 size, ButtonKind kind = ButtonKind::Primary, const char* icon = nullptr);
+// Older call sites: primary = accent, otherwise outline.
+inline bool big_button(const char* label, ImVec2 size, bool primary = true) {
+    return button(label, size, primary ? ButtonKind::Primary : ButtonKind::Outline);
+}
+// On/off switch with its label to the right; a drop-in for ImGui::Checkbox.
+bool toggle(const char* label, bool* value);
 // Text centered horizontally in the current window.
 void centered_text(const char* text, ImFont* font = nullptr, ImVec4 color = ImVec4(0, 0, 0, 0));
+
+// Settings pages: each section is a card with a title. section() closes the previous card and
+// opens a new one; end_section() closes the last one (the settings menu calls it after each
+// page, so pages only call section()).
+void section(const char* title);
+void end_section();
+
+// Draws a logo image at a fixed height, centered in the current window. Logos are trimmed to
+// their visible pixels when loaded (see trim_logo), so every game's logo has the same height
+// whatever its shape. max_width shrinks very wide logos to fit.
+void logo_image(ImTextureID tex, ImVec2 tex_size, float height, float max_width);
+// Crops transparent rows and columns from an RGBA image in place. Returns the new size.
+void trim_logo(unsigned char* rgba, int& w, int& h);
 
 }  // namespace metrofuse::theme
