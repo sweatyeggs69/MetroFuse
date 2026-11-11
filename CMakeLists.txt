@@ -203,6 +203,17 @@ if(TARGET SDL3::SDL3)
         DEPENDS assets/logo/metrofuse-logo.png cmake/embed.cmake
         COMMENT "Embedding the MetroFuse logo")
     list(APPEND metrofuse_font_cpp "${out}")
+    # The app icon (512x512, rendered by metrofuse_icon), written into the shortcuts the launcher
+    # creates so they carry the MetroFuse icon even from a plain build/metrofuse.
+    set(icon_png "${CMAKE_CURRENT_BINARY_DIR}/metrofuse-icon-512.png")
+    set(out "${CMAKE_CURRENT_BINARY_DIR}/image_icon.cpp")
+    add_custom_command(OUTPUT "${out}"
+        COMMAND metrofuse_icon --png 512 "${icon_png}"
+        COMMAND "${CMAKE_COMMAND}" -DINPUT=${icon_png} -DOUTPUT=${out}
+                -DSYMBOL=metrofuse_image_icon -P ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
+        DEPENDS metrofuse_icon cmake/embed.cmake
+        COMMENT "Embedding the MetroFuse app icon")
+    list(APPEND metrofuse_font_cpp "${out}")
     # License texts compiled in (shown in F1 > About and by --licenses).
     foreach(pair "license;LICENSE" "notices;THIRD_PARTY_NOTICES.md" "dmsans_ofl;assets/fonts/DMSans-OFL.txt")
         list(GET pair 0 name)
