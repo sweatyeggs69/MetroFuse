@@ -43,7 +43,13 @@ Inherited from the KNID platform layer:
 - **One settings menu (F1)** for display (scaling, widescreen, screen effects) and controls.
 - **Controllers and remapping** for keyboard and gamepads.
 - **Save states**: ten slots plus Auto, with thumbnails, quick save/load and optional auto-load.
-- **Cheats** (F1 > Cheats): unlimited health, missiles and power bombs. Off in RetroAchievements hardcore mode.
+- **Cheats** (F1 > Cheats/Mods): unlimited health, missiles and power bombs. Off in RetroAchievements hardcore mode.
+- **Redux Mode** (F1 > Cheats/Mods): optional quality-of-life tweaks, switched on together or one at a time: skip the
+  opening with START, fast text, faster doors and elevators, item counts and timer on the map, an accurate clock, a
+  chargeable starting beam, a Morph Ball that rests when still, and no low health alarm. Inspired by
+  [Metroid Fusion Redux](https://github.com/ShadowOne333/Metroid-Fusion-Redux) by ShadowOne333 and the community hacks
+  it collects; these are MetroFuse's own versions for the USA game, applied in memory (your ROM file is never changed).
+  Off in RetroAchievements hardcore mode.
 - **Import saves** from RetroArch, mGBA, VBA-M and others.
 - **RetroAchievements**, optional.
 - **Automatic updates** from this repository's releases, with your OK, without touching your saves.
