@@ -22,12 +22,6 @@
 > MetroFuse is an unofficial fan project. It is not affiliated with, endorsed or sponsored by
 > Nintendo. Metroid and all related names are trademarks of their respective owners.
 
-### Works with RecompLauncher
-
-MetroFuse works with [RecompLauncher](https://recomplauncher.com), which installs and updates it from
-these releases. Pick your ROM there and it is checked against the verified USA dump, set as MetroFuse's
-game, and started with Play. The display settings show on the game's page too.
-
 [![Verified developer on RecompStore](https://recompstore.com/assets/press/verified-dark.svg)](https://recompstore.com/dev/sweatyeggs69)
 
 ## Features
