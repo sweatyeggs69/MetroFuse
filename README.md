@@ -22,7 +22,10 @@
 > MetroFuse is an unofficial fan project. It is not affiliated with, endorsed or sponsored by
 > Nintendo. Metroid and all related names are trademarks of their respective owners.
 
-[![Verified developer on RecompStore](https://recompstore.com/assets/press/verified-dark.svg)](https://recompstore.com/dev/sweatyeggs69)
+## Download
+<a href="https://recomplauncher.com/game/metrofuse"><img alt="Get it on RecompLauncher" src="https://recomplauncher.com/assets/press/launcher/badge-dark.svg"></a>
+
+Get the latest version from the [Releases page](https://github.com/sweatyeggs69/metrofuse/releases/latest).
 
 ## Features
 
