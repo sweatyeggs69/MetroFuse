@@ -1,7 +1,9 @@
 #include "options/input.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
+#include <cstring>
 
 #include "app/states.h"
 
@@ -35,6 +37,33 @@ bool reserved_hotkey_key(SDL_Scancode sc) {
 Binding key(SDL_Scancode sc) { return {Binding::Kind::Key, int(sc), 0}; }
 Binding pad(SDL_GamepadButton b) { return {Binding::Kind::PadButton, int(b), 0}; }
 Binding axis(SDL_GamepadAxis a, int dir) { return {Binding::Kind::PadAxis, int(a), dir}; }
+Binding joy_button(int i) { return {Binding::Kind::JoyButton, i, 0}; }
+Binding joy_axis(int i, int dir) { return {Binding::Kind::JoyAxis, i, dir}; }
+Binding joy_hat(int i, int dir) { return {Binding::Kind::JoyHat, i, dir}; }
+Binding mouse(int button) { return {Binding::Kind::Mouse, button, 0}; }
+
+// Left and right clicks drive the menus, so only the other mouse buttons can be bound.
+bool bindable_mouse(int button) {
+    return button == SDL_BUTTON_MIDDLE || button == SDL_BUTTON_X1 || button == SDL_BUTTON_X2;
+}
+
+const char* hat_name(int dir) {
+    switch (dir) {
+        case SDL_HAT_UP: return "up";
+        case SDL_HAT_DOWN: return "down";
+        case SDL_HAT_LEFT: return "left";
+        case SDL_HAT_RIGHT: return "right";
+        default: return nullptr;
+    }
+}
+// A hat reports a bit mask; a diagonal binds its vertical half.
+int hat_direction(Uint8 value) {
+    if (value & SDL_HAT_UP) return SDL_HAT_UP;
+    if (value & SDL_HAT_DOWN) return SDL_HAT_DOWN;
+    if (value & SDL_HAT_LEFT) return SDL_HAT_LEFT;
+    if (value & SDL_HAT_RIGHT) return SDL_HAT_RIGHT;
+    return 0;
+}
 }  // namespace
 
 const char* name(Button b) {
@@ -67,6 +96,19 @@ std::string to_string(const Binding& b) {
             const char* n = SDL_GetGamepadStringForAxis(SDL_GamepadAxis(b.code));
             return std::string("axis:") + (n ? n : "?") + (b.dir < 0 ? "-" : "+");
         }
+        case Binding::Kind::JoyButton: return "joy:button" + std::to_string(b.code);
+        case Binding::Kind::JoyAxis: return "joy:axis" + std::to_string(b.code) + (b.dir < 0 ? "-" : "+");
+        case Binding::Kind::JoyHat: {
+            const char* n = hat_name(b.dir);
+            return "joy:hat" + std::to_string(b.code) + (n ? n : "?");
+        }
+        case Binding::Kind::Mouse:
+            switch (b.code) {
+                case SDL_BUTTON_MIDDLE: return "mouse:middle";
+                case SDL_BUTTON_X1: return "mouse:x1";
+                case SDL_BUTTON_X2: return "mouse:x2";
+                default: return "mouse:" + std::to_string(b.code);
+            }
     }
     return "?";
 }
@@ -121,6 +163,11 @@ std::string display_name(const Binding& b) {
                 case SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2: return "Right Paddle 2";
                 case SDL_GAMEPAD_BUTTON_LEFT_PADDLE2: return "Left Paddle 2";
                 case SDL_GAMEPAD_BUTTON_TOUCHPAD: return "Touchpad Press";
+                case SDL_GAMEPAD_BUTTON_MISC2: return "Extra Button 2";
+                case SDL_GAMEPAD_BUTTON_MISC3: return "Extra Button 3";
+                case SDL_GAMEPAD_BUTTON_MISC4: return "Extra Button 4";
+                case SDL_GAMEPAD_BUTTON_MISC5: return "Extra Button 5";
+                case SDL_GAMEPAD_BUTTON_MISC6: return "Extra Button 6";
                 default: return "Controller Button " + std::to_string(b.code);
             }
         case Binding::Kind::PadAxis: {
@@ -135,6 +182,22 @@ std::string display_name(const Binding& b) {
                 default: return "Controller Axis " + std::to_string(b.code) + (neg ? "-" : "+");
             }
         }
+        // Raw indices count from 1 in menus, as controller test tools show them.
+        case Binding::Kind::JoyButton: return "Joystick Button " + std::to_string(b.code + 1);
+        case Binding::Kind::JoyAxis:
+            return "Joystick Axis " + std::to_string(b.code + 1) + (b.dir < 0 ? "-" : "+");
+        case Binding::Kind::JoyHat: {
+            std::string d = hat_name(b.dir) ? hat_name(b.dir) : "?";
+            d[0] = char(std::toupper(static_cast<unsigned char>(d[0])));
+            return "Joystick Hat " + std::to_string(b.code + 1) + " " + d;
+        }
+        case Binding::Kind::Mouse:
+            switch (b.code) {
+                case SDL_BUTTON_MIDDLE: return "Middle Mouse Button";
+                case SDL_BUTTON_X1: return "Mouse Button 4";
+                case SDL_BUTTON_X2: return "Mouse Button 5";
+                default: return "Mouse Button " + std::to_string(b.code);
+            }
     }
     return "?";
 }
@@ -178,9 +241,65 @@ bool parse(const std::string& text, Binding& out, bool hotkey) {
         out = axis(a, sign == '-' ? -1 : 1);
         return true;
     }
+    if (hotkey) return false;  // shortcuts use keys and standard controller buttons only
+    auto index_after = [&](const std::string& v, const char* prefix, std::string& rest) {
+        const size_t n = std::strlen(prefix);
+        if (v.compare(0, n, prefix) != 0) return -1;
+        size_t i = n;
+        while (i < v.size() && std::isdigit(static_cast<unsigned char>(v[i]))) ++i;
+        if (i == n || i - n > 3) return -1;
+        rest = v.substr(i);
+        return std::atoi(v.substr(n, i - n).c_str());
+    };
+    if (kind == "joy") {
+        const std::string v = lower(value);
+        std::string rest;
+        int i;
+        if ((i = index_after(v, "button", rest)) >= 0 && rest.empty()) {
+            out = joy_button(i);
+            return true;
+        }
+        if ((i = index_after(v, "axis", rest)) >= 0 && (rest == "+" || rest == "-")) {
+            out = joy_axis(i, rest == "-" ? -1 : 1);
+            return true;
+        }
+        if ((i = index_after(v, "hat", rest)) >= 0) {
+            for (int d : {SDL_HAT_UP, SDL_HAT_DOWN, SDL_HAT_LEFT, SDL_HAT_RIGHT})
+                if (rest == hat_name(d)) {
+                    out = joy_hat(i, d);
+                    return true;
+                }
+        }
+        return false;
+    }
+    if (kind == "mouse") {
+        const std::string v = lower(value);
+        int b = v == "middle" ? SDL_BUTTON_MIDDLE : v == "x1" ? SDL_BUTTON_X1 : v == "x2" ? SDL_BUTTON_X2 : 0;
+        if (!bindable_mouse(b)) return false;
+        out = mouse(b);
+        return true;
+    }
     return false;
 }
 }  // namespace
+
+const char* name(Action a) {
+    switch (a) {
+        case Action::MissileToggle: return "Missile toggle";
+        case Action::AimUp: return "Aim diagonally up";
+        case Action::AimDown: return "Aim diagonally down";
+        default: return "?";
+    }
+}
+
+const char* key_name(Action a) {
+    switch (a) {
+        case Action::MissileToggle: return "missile_toggle";
+        case Action::AimUp: return "aim_up";
+        case Action::AimDown: return "aim_down";
+        default: return "?";
+    }
+}
 
 const char* name(Hotkey h) {
     switch (h) {
@@ -378,6 +497,15 @@ Config load(const SettingsIO& io) {
         if (lower(v) == "none") c.hotkeys[i].clear();
         else if (auto list = split_chords(v); !list.empty()) c.hotkeys[i] = std::move(list);
     }
+    for (int i = 0; i < kActionCount; ++i) {
+        const std::string v = trim(io.get(std::string("input.action.") + key_name(Action(i)), ""));
+        if (v.empty() || lower(v) == "none") continue;  // unbound by default
+        c.actions[i] = split(v);
+    }
+    {
+        const std::string on = lower(trim(io.get("input.right_stick_aim", "")));
+        c.right_stick_aim = on == "1" || on == "true" || on == "yes" || on == "on";
+    }
     return c;
 }
 
@@ -390,6 +518,9 @@ void store(const Config& c, const SettingsIO& io) {
     for (Button b : kRemapOrder) io.set(std::string("input.") + name(b), join(c.buttons[int(b)]));
     for (int i = 0; i < kHotkeyCount; ++i)
         io.set(std::string("input.hotkey.") + key_name(Hotkey(i)), join_chords(c.hotkeys[i]));
+    for (int i = 0; i < kActionCount; ++i)
+        io.set(std::string("input.action.") + key_name(Action(i)), join(c.actions[i]));
+    io.set("input.right_stick_aim", c.right_stick_aim ? "true" : "false");
 }
 
 // ---------------------------------------------------------------------------------------
@@ -407,19 +538,132 @@ Manager::Manager(SettingsIO io) : io_(std::move(io)) {
             complete = io_.get(std::string("input.") + name(Button(i)), missing) != missing;
         for (int i = 0; complete && i < kHotkeyCount; ++i)
             complete = io_.get(std::string("input.hotkey.") + key_name(Hotkey(i)), missing) != missing;
+        for (int i = 0; complete && i < kActionCount; ++i)
+            complete = io_.get(std::string("input.action.") + key_name(Action(i)), missing) != missing;
+        complete = complete && io_.get("input.right_stick_aim", missing) != missing;
         if (!complete) save();
     }
-    // Pads connected before this object existed already sent their ADDED events.
+    // Controllers connected before this object existed already sent their ADDED events.
     int count = 0;
-    if (SDL_JoystickID* ids = SDL_GetGamepads(&count)) {
-        for (int i = 0; i < count; ++i)
-            if (SDL_Gamepad* p = SDL_OpenGamepad(ids[i])) pads_.push_back(p);
+    if (SDL_JoystickID* ids = SDL_GetJoysticks(&count)) {
+        for (int i = 0; i < count; ++i) {
+            if (SDL_IsGamepad(ids[i])) open_gamepad(ids[i]);
+            else open_joystick(ids[i]);
+        }
         SDL_free(ids);
     }
 }
 
 Manager::~Manager() {
-    for (auto* p : pads_) SDL_CloseGamepad(p);
+    for (auto& d : devices_) {
+        if (d.pad) SDL_CloseGamepad(d.pad);
+        else if (d.joy) SDL_CloseJoystick(d.joy);
+    }
+}
+
+void Manager::open_gamepad(SDL_JoystickID id) {
+    if (device(id)) return;
+    SDL_Gamepad* p = SDL_OpenGamepad(id);
+    if (!p) return;
+    Device d;
+    d.pad = p;
+    d.joy = SDL_GetGamepadJoystick(p);
+    d.id = id;
+    d.mapped_buttons.assign(std::max(0, SDL_GetNumJoystickButtons(d.joy)), false);
+    d.mapped_axes.assign(std::max(0, SDL_GetNumJoystickAxes(d.joy)), false);
+    d.mapped_hats.assign(std::max(0, SDL_GetNumJoystickHats(d.joy)), false);
+    int n = 0;
+    if (SDL_GamepadBinding** binds = SDL_GetGamepadBindings(p, &n)) {
+        auto mark = [](std::vector<bool>& v, int index) {
+            if (index >= 0 && index < int(v.size())) v[index] = true;
+        };
+        for (int i = 0; i < n; ++i) {
+            const SDL_GamepadBinding& b = *binds[i];
+            if (b.input_type == SDL_GAMEPAD_BINDTYPE_BUTTON) mark(d.mapped_buttons, b.input.button);
+            else if (b.input_type == SDL_GAMEPAD_BINDTYPE_AXIS) mark(d.mapped_axes, b.input.axis.axis);
+            else if (b.input_type == SDL_GAMEPAD_BINDTYPE_HAT) mark(d.mapped_hats, b.input.hat.hat);
+        }
+        SDL_free(binds);
+    }
+    devices_.push_back(std::move(d));
+}
+
+void Manager::open_joystick(SDL_JoystickID id) {
+    if (device(id)) return;
+    SDL_Joystick* j = SDL_OpenJoystick(id);
+    if (!j) return;
+    Device d;
+    d.joy = j;
+    d.id = id;
+    devices_.push_back(std::move(d));
+}
+
+void Manager::close_device(SDL_JoystickID id) {
+    for (auto it = devices_.begin(); it != devices_.end(); ++it)
+        if (it->id == id) {
+            if (it->pad) SDL_CloseGamepad(it->pad);
+            else SDL_CloseJoystick(it->joy);
+            devices_.erase(it);
+            message_ = "Controller disconnected";
+            return;
+        }
+}
+
+const Manager::Device* Manager::device(SDL_JoystickID id) const {
+    for (const auto& d : devices_)
+        if (d.id == id) return &d;
+    return nullptr;
+}
+
+bool Manager::held(const Binding& b, int threshold) const {
+    auto unmapped = [](const std::vector<bool>& mapped, int i) { return i >= int(mapped.size()) || !mapped[i]; };
+    switch (b.kind) {
+        case Binding::Kind::Key: {
+            const bool* k = SDL_GetKeyboardState(nullptr);
+            return k && b.code >= 0 && b.code < SDL_SCANCODE_COUNT && k[b.code];
+        }
+        case Binding::Kind::Mouse:
+            return (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_MASK(b.code)) != 0;
+        default: break;
+    }
+    for (const auto& d : devices_) {
+        switch (b.kind) {
+            case Binding::Kind::PadButton:
+                if (d.pad && SDL_GetGamepadButton(d.pad, SDL_GamepadButton(b.code))) return true;
+                break;
+            case Binding::Kind::PadAxis:
+                if (d.pad) {
+                    const int v = SDL_GetGamepadAxis(d.pad, SDL_GamepadAxis(b.code));
+                    if (b.dir < 0 ? v < -threshold : v > threshold) return true;
+                }
+                break;
+            // Raw inputs a gamepad layout already covers are read through that layout instead.
+            case Binding::Kind::JoyButton:
+                if (unmapped(d.mapped_buttons, b.code) && b.code < SDL_GetNumJoystickButtons(d.joy) &&
+                    SDL_GetJoystickButton(d.joy, b.code))
+                    return true;
+                break;
+            case Binding::Kind::JoyAxis:
+                if (unmapped(d.mapped_axes, b.code) && b.code < SDL_GetNumJoystickAxes(d.joy)) {
+                    const int v = SDL_GetJoystickAxis(d.joy, b.code);
+                    if (b.dir < 0 ? v < -threshold : v > threshold) return true;
+                }
+                break;
+            case Binding::Kind::JoyHat:
+                if (unmapped(d.mapped_hats, b.code) && b.code < SDL_GetNumJoystickHats(d.joy) &&
+                    (SDL_GetJoystickHat(d.joy, b.code) & b.dir))
+                    return true;
+                break;
+            default: break;
+        }
+    }
+    return false;
+}
+
+bool Manager::held(Action a, int threshold) const {
+    for (const auto& b : config_.actions[int(a)])
+        if (held(b, threshold)) return true;
+    return false;
 }
 
 void Manager::save() const {
@@ -429,33 +673,21 @@ void Manager::save() const {
 
 std::uint16_t Manager::poll() const {
     if (remapping()) return 0;
-    const bool* k = SDL_GetKeyboardState(nullptr);
     const int threshold = 32767 * config_.deadzone_percent / 100;
     // Buttons that fired a shortcut stay away from the game until every pad releases them.
     std::erase_if(suppressed_, [&](int code) {
-        for (auto* p : pads_)
-            if (SDL_GetGamepadButton(p, SDL_GamepadButton(code))) return false;
+        for (const auto& d : devices_)
+            if (d.pad && SDL_GetGamepadButton(d.pad, SDL_GamepadButton(code))) return false;
         return true;
     });
     std::uint16_t mask = 0;
     for (int i = 0; i < kButtonCount; ++i) {
         bool down = false;
         for (const auto& b : config_.buttons[i]) {
-            if (b.kind == Binding::Kind::Key) {
-                down = k && k[b.code];
-            } else {
-                for (auto* p : pads_) {
-                    if (b.kind == Binding::Kind::PadButton) {
-                        if (std::find(suppressed_.begin(), suppressed_.end(), b.code) != suppressed_.end()) break;
-                        down = SDL_GetGamepadButton(p, SDL_GamepadButton(b.code));
-                    } else {
-                        const int v = SDL_GetGamepadAxis(p, SDL_GamepadAxis(b.code));
-                        down = b.dir < 0 ? v < -threshold : v > threshold;
-                    }
-                    if (down) break;
-                }
-            }
-            if (down) break;
+            if (b.kind == Binding::Kind::PadButton &&
+                std::find(suppressed_.begin(), suppressed_.end(), b.code) != suppressed_.end())
+                continue;
+            if ((down = held(b, threshold))) break;
         }
         if (down) mask |= std::uint16_t(1u << i);
     }
@@ -466,7 +698,53 @@ std::uint16_t Manager::poll() const {
     return mask;
 }
 
-std::uint16_t Manager::poll_frame() { return turbo_.step(poll(), config_.turbo); }
+std::uint16_t Manager::poll_frame() {
+    std::uint16_t mask = turbo_.step(poll(), config_.turbo);
+    if (remapping()) {
+        toggle_was_held_ = false;
+        last_aim_ = 0;
+        return mask;
+    }
+    const int threshold = 32767 * config_.deadzone_percent / 100;
+    auto bit = [](Button b) { return std::uint16_t(1u << int(b)); };
+
+    // Missile toggle: Fusion arms missiles (and power bombs in morph ball) while R is held, so the
+    // toggle keeps R held until it is pressed again. Added after turbo so R never pulses.
+    const bool toggle = held(Action::MissileToggle, threshold);
+    if (toggle && !toggle_was_held_) missiles_armed_ = !missiles_armed_;
+    toggle_was_held_ = toggle;
+    if (missiles_armed_) mask |= bit(Button::R);
+
+    // Diagonal aim: the game aims diagonally while L is held, down when Down is held too. Once it
+    // aims down it stays down until L is let go or Up is pressed, so going straight from aiming
+    // down to aiming up adds one frame of Up. A fresh Down press while standing crouches unless
+    // the game is already aiming diagonally, so aiming down starts with a few frames of L alone.
+    bool up = held(Action::AimUp, threshold), down = held(Action::AimDown, threshold);
+    if (config_.right_stick_aim) {
+        for (const auto& d : devices_) {
+            if (!d.pad) continue;
+            const int v = SDL_GetGamepadAxis(d.pad, SDL_GAMEPAD_AXIS_RIGHTY);
+            if (v < -threshold) up = true;
+            else if (v > threshold) down = true;
+        }
+    }
+    const int aim = down ? 1 : up ? -1 : 0;
+    aim_frames_ = (aim == 0 || last_aim_ == 0) ? 0 : std::min(aim_frames_ + 1, kAimLeadFrames);
+    if (aim > 0) {
+        mask |= bit(Button::L);
+        mask &= std::uint16_t(~(bit(Button::Up) | bit(Button::Down)));
+        if (aim_frames_ >= kAimLeadFrames || last_aim_ < 0) {
+            mask |= bit(Button::Down);
+            aim_frames_ = kAimLeadFrames;
+        }
+    } else if (aim < 0) {
+        mask |= bit(Button::L);
+        mask &= std::uint16_t(~bit(Button::Down));
+        if (last_aim_ > 0) mask |= bit(Button::Up);
+    }
+    last_aim_ = aim;
+    return mask;
+}
 
 void Manager::start_remap(Button only) {
     start_remap();
@@ -482,6 +760,7 @@ void Manager::start_remap(Hotkey only) {
     if (only == Hotkey::Count) return;
     remap_index_ = -1;
     remap_single_ = false;
+    action_remap_ = Action::Count;
     hotkey_remap_ = only;
     capture_.clear();
     message_.clear();
@@ -494,11 +773,28 @@ void Manager::clear(Hotkey h) {
     message_ = std::string(name(h)) + " unbound";
 }
 
+void Manager::start_remap(Action only) {
+    if (only == Action::Count) return;
+    start_remap();  // arms the stick axes
+    remap_index_ = -1;
+    hotkey_remap_ = Hotkey::Count;
+    action_remap_ = only;
+    message_.clear();
+}
+
+void Manager::clear(Action a) {
+    if (a == Action::Count) return;
+    config_.actions[int(a)].clear();
+    save();
+    message_ = std::string(name(a)) + " unbound";
+}
+
 void Manager::cancel_remap() {
     if (!remapping()) return;
     remap_index_ = -1;
     remap_single_ = false;
     hotkey_remap_ = Hotkey::Count;
+    action_remap_ = Action::Count;
     capture_.clear();
     config_ = load(io_);  // drop unsaved changes
     message_ = "Remap cancelled";
@@ -511,12 +807,20 @@ void Manager::reload() {
 void Manager::start_remap() {
     remap_index_ = 0;
     remap_single_ = false;
+    action_remap_ = Action::Count;
     const int threshold = 32767 * config_.deadzone_percent / 100;
     for (int a = 0; a < SDL_GAMEPAD_AXIS_COUNT; ++a) {
         bool centered = true;
-        for (auto* p : pads_)
-            if (std::abs(int(SDL_GetGamepadAxis(p, SDL_GamepadAxis(a)))) > threshold) centered = false;
+        for (const auto& d : devices_)
+            if (d.pad && std::abs(int(SDL_GetGamepadAxis(d.pad, SDL_GamepadAxis(a)))) > threshold) centered = false;
         axis_armed_[a] = centered;
+    }
+    for (int a = 0; a < kMaxJoyAxes; ++a) {
+        bool centered = true;
+        for (const auto& d : devices_)
+            if (a < SDL_GetNumJoystickAxes(d.joy) && std::abs(int(SDL_GetJoystickAxis(d.joy, a))) > threshold)
+                centered = false;
+        joy_axis_armed_[a] = centered;
     }
     message_ = "Rebinding controls. Esc keeps the current binding.";
 }
@@ -526,17 +830,21 @@ std::string Manager::remap_prompt() const {
     if (hotkey_remap_ != Hotkey::Count)
         return std::string("Press a key or controller button(s) for ") + name(hotkey_remap_) +
                "  (now: " + describe(hotkey_remap_) + ")";
+    if (action_remap_ != Action::Count)
+        return std::string("Press a key or controller button for ") + name(action_remap_) +
+               "  (now: " + describe(action_remap_) + ")";
     const Button b = kRemapOrder[remap_index_];
     return std::string("Press a key or pad button for ") + name(b) + "  (now: " + describe(b) + ")";
 }
 
 void Manager::assign(const Binding& bind) {
-    const Button target = kRemapOrder[remap_index_];
-    // An input drives one GBA button only, and a key is either a button or a shortcut.
+    // An input drives one GBA button or extra action only, and a key is either that or a shortcut.
     for (auto& list : config_.buttons) list.erase(std::remove(list.begin(), list.end(), bind), list.end());
+    for (auto& list : config_.actions) list.erase(std::remove(list.begin(), list.end(), bind), list.end());
     for (auto& list : config_.hotkeys) list.erase(std::remove(list.begin(), list.end(), Chord{bind}), list.end());
-    // Replace this button's bindings of the same device type (keyboard vs gamepad).
-    auto& list = config_.buttons[int(target)];
+    // Replace this button's bindings of the same device type (keyboard vs controller).
+    auto& list = action_remap_ != Action::Count ? config_.actions[int(action_remap_)]
+                                                : config_.buttons[int(kRemapOrder[remap_index_])];
     const bool is_key = bind.kind == Binding::Kind::Key;
     list.erase(std::remove_if(list.begin(), list.end(),
                               [&](const Binding& b) { return (b.kind == Binding::Kind::Key) == is_key; }),
@@ -546,6 +854,13 @@ void Manager::assign(const Binding& bind) {
 }
 
 void Manager::advance() {
+    if (action_remap_ != Action::Count) {
+        const Action done = action_remap_;
+        action_remap_ = Action::Count;
+        save();
+        message_ = std::string(name(done)) + ": " + describe(done);
+        return;
+    }
     ++remap_index_;
     if (remap_single_ || remap_index_ >= int(std::size(kRemapOrder))) {
         remap_index_ = -1;
@@ -563,9 +878,12 @@ void Manager::assign_hotkey(const Chord& chord) {
     // A chord triggers one shortcut, and a key used for a shortcut stops driving a GBA button.
     for (auto& list : config_.hotkeys) list.erase(std::remove(list.begin(), list.end(), chord), list.end());
     const bool is_key = chord.front().kind == Binding::Kind::Key;
-    if (is_key)
+    if (is_key) {
         for (auto& list : config_.buttons)
             list.erase(std::remove(list.begin(), list.end(), chord.front()), list.end());
+        for (auto& list : config_.actions)
+            list.erase(std::remove(list.begin(), list.end(), chord.front()), list.end());
+    }
     // Replace this shortcut's binding of the same device type, like the button rebinds do.
     auto& list = config_.hotkeys[int(target)];
     list.erase(std::remove_if(list.begin(), list.end(),
@@ -590,7 +908,9 @@ void Manager::fire(Hotkey h) {
 void Manager::reset_to_defaults() {
     remap_index_ = -1;
     hotkey_remap_ = Hotkey::Count;
+    action_remap_ = Action::Count;
     capture_.clear();
+    missiles_armed_ = false;
     config_ = default_config();
     save();
     message_ = "Controls reset to defaults";
@@ -616,6 +936,15 @@ std::string Manager::describe(Hotkey h) const {
     return s.empty() ? "None" : s;
 }
 
+std::string Manager::describe(Action a) const {
+    std::string s;
+    for (const auto& bind : config_.actions[int(a)]) {
+        if (!s.empty()) s += ", ";
+        s += display_name(bind);
+    }
+    return s.empty() ? "None" : s;
+}
+
 std::string Manager::take_message() {
     std::string m;
     m.swap(message_);
@@ -624,23 +953,31 @@ std::string Manager::take_message() {
 
 bool Manager::handle_event(const SDL_Event& e) {
     switch (e.type) {
-        case SDL_EVENT_GAMEPAD_ADDED:
-            for (auto* p : pads_)
-                if (SDL_GetGamepadID(p) == e.gdevice.which) return false;  // already open
-            if (SDL_Gamepad* p = SDL_OpenGamepad(e.gdevice.which)) {
-                pads_.push_back(p);
-                const char* n = SDL_GetGamepadName(p);
+        case SDL_EVENT_JOYSTICK_ADDED:
+        case SDL_EVENT_GAMEPAD_ADDED: {
+            const SDL_JoystickID id = e.type == SDL_EVENT_GAMEPAD_ADDED ? e.gdevice.which : e.jdevice.which;
+            if (device(id)) return false;  // already open
+            // Controllers SDL knows a layout for open as gamepads; anything else as a raw joystick.
+            if (SDL_IsGamepad(id)) open_gamepad(id);
+            else if (e.type == SDL_EVENT_JOYSTICK_ADDED) open_joystick(id);
+            if (const Device* d = device(id)) {
+                const char* n = d->pad ? SDL_GetGamepadName(d->pad) : SDL_GetJoystickName(d->joy);
                 message_ = std::string("Controller connected: ") + (n ? n : "gamepad");
             }
             return false;
+        }
+        case SDL_EVENT_JOYSTICK_REMOVED:
         case SDL_EVENT_GAMEPAD_REMOVED:
-            for (auto it = pads_.begin(); it != pads_.end(); ++it)
-                if (SDL_GetGamepadID(*it) == e.gdevice.which) {
-                    SDL_CloseGamepad(*it);
-                    pads_.erase(it);
-                    message_ = "Controller disconnected";
-                    break;
-                }
+            close_device(e.type == SDL_EVENT_GAMEPAD_REMOVED ? e.gdevice.which : e.jdevice.which);
+            return false;
+        case SDL_EVENT_GAMEPAD_REMAPPED:
+            // A new layout can change which raw inputs it covers.
+            if (const Device* d = device(e.gdevice.which); d && d->pad) {
+                const SDL_JoystickID id = d->id;
+                close_device(id);
+                open_gamepad(id);
+                message_.clear();
+            }
             return false;
         default: break;
     }
@@ -659,6 +996,9 @@ bool Manager::handle_event(const SDL_Event& e) {
             }
             case SDL_EVENT_KEY_UP:
             case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+            case SDL_EVENT_JOYSTICK_BUTTON_DOWN:
+            case SDL_EVENT_JOYSTICK_AXIS_MOTION:
+            case SDL_EVENT_JOYSTICK_HAT_MOTION:
                 return true;
             case SDL_EVENT_GAMEPAD_BUTTON_DOWN: {
                 const Binding b = pad(SDL_GamepadButton(e.gbutton.button));
@@ -745,6 +1085,40 @@ bool Manager::handle_event(const SDL_Event& e) {
             }
             return true;
         }
+        // Raw joystick input binds only when no gamepad layout covers it, so a standard
+        // controller's buttons still bind by name and only its extras bind by number.
+        case SDL_EVENT_JOYSTICK_BUTTON_DOWN: {
+            const Device* d = device(e.jbutton.which);
+            const int i = e.jbutton.button;
+            if (d && (i >= int(d->mapped_buttons.size()) || !d->mapped_buttons[i])) assign(joy_button(i));
+            return true;
+        }
+        case SDL_EVENT_JOYSTICK_AXIS_MOTION: {
+            const Device* d = device(e.jaxis.which);
+            const int a = e.jaxis.axis, v = e.jaxis.value;
+            if (!d || a >= kMaxJoyAxes || (a < int(d->mapped_axes.size()) && d->mapped_axes[a])) return true;
+            if (std::abs(v) < threshold / 2) {
+                joy_axis_armed_[a] = true;
+            } else if (joy_axis_armed_[a] && std::abs(v) > threshold) {
+                joy_axis_armed_[a] = false;
+                assign(joy_axis(a, v < 0 ? -1 : 1));
+            }
+            return true;
+        }
+        case SDL_EVENT_JOYSTICK_HAT_MOTION: {
+            const Device* d = device(e.jhat.which);
+            const int h = e.jhat.hat;
+            if (d && (h >= int(d->mapped_hats.size()) || !d->mapped_hats[h]))
+                if (const int dir = hat_direction(e.jhat.value)) assign(joy_hat(h, dir));
+            return true;
+        }
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            if (!bindable_mouse(e.button.button)) return false;  // left/right clicks still work the menu
+            assign(mouse(e.button.button));
+            return true;
+        case SDL_EVENT_JOYSTICK_BUTTON_UP:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            return true;
         default:
             return false;
     }

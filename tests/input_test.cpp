@@ -194,6 +194,171 @@ void shortcuts(Manager& m) {
     release_all();
     metrofuse::states::set_hotkeys({});
 }
+void binding_strings() {
+    const Binding samples[] = {
+        {Binding::Kind::JoyButton, 12, 0},         {Binding::Kind::JoyAxis, 4, -1},
+        {Binding::Kind::JoyAxis, 0, 1},            {Binding::Kind::JoyHat, 1, SDL_HAT_LEFT},
+        {Binding::Kind::Mouse, SDL_BUTTON_X1, 0},  {Binding::Kind::Mouse, SDL_BUTTON_MIDDLE, 0},
+        {Binding::Kind::PadButton, SDL_GAMEPAD_BUTTON_LEFT_PADDLE2, 0},
+    };
+    for (const auto& b : samples) {
+        Binding back;
+        CHECK(from_string(to_string(b), back) && back == b);
+    }
+    CHECK(to_string(samples[0]) == "joy:button12");
+    CHECK(display_name(samples[0]) == "Joystick Button 13");
+    CHECK(display_name(samples[3]) == "Joystick Hat 2 Left");
+    CHECK(display_name(samples[4]) == "Mouse Button 4");
+    Binding bad;
+    CHECK(!from_string("mouse:left", bad));  // left/right clicks stay with the menus
+    CHECK(!from_string("joy:hat0north", bad));
+    CHECK(!from_string("joy:button", bad));
+    // Shortcuts keep to keys and standard controller buttons.
+    Chord c;
+    CHECK(!chord_from_string("joy:button3", c));
+
+    // Extra actions start unbound, round-trip through settings, and can be cleared with "none".
+    const Config d = default_config();
+    for (const auto& list : d.actions) CHECK(list.empty());
+    CHECK(!d.right_stick_aim);
+    std::map<std::string, std::string> ini;
+    metrofuse::SettingsIO io;
+    io.get = [&](const std::string& k, const std::string& fb) {
+        auto it = ini.find(k);
+        return it == ini.end() ? fb : it->second;
+    };
+    io.set = [&](const std::string& k, const std::string& v) { ini[k] = v; };
+    Config c2 = d;
+    c2.actions[int(Action::MissileToggle)] = {samples[0], samples[6]};
+    c2.right_stick_aim = true;
+    store(c2, io);
+    CHECK(ini["input.action.missile_toggle"] == "joy:button12 | pad:paddle4");
+    CHECK(ini["input.action.aim_up"] == "none");
+    const Config loaded = load(io);
+    CHECK(loaded.actions == c2.actions);
+    CHECK(loaded.right_stick_aim);
+}
+
+// Extra actions, driven through poll_frame() the way the game loop calls it.
+void actions(std::map<std::string, std::string>& ini, Manager& m) {
+    ini["input.action.missile_toggle"] = "pad:paddle1";
+    ini["input.action.aim_up"] = "pad:paddle2";
+    ini["input.action.aim_down"] = "pad:paddle3";
+    m.reload();
+    CHECK(m.poll_frame() == 0);
+
+    // One press arms missiles (R held), the next press disarms.
+    press(SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1, true);
+    CHECK(m.poll_frame() == bit(Button::R));
+    CHECK(m.poll_frame() == bit(Button::R));  // holding does not toggle again
+    press(SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1, false);
+    CHECK(m.poll_frame() == bit(Button::R));
+    CHECK(m.missiles_armed());
+    press(SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1, true);
+    CHECK(m.poll_frame() == 0);
+    press(SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1, false);
+    CHECK(m.poll_frame() == 0);
+    CHECK(!m.missiles_armed());
+    // The paddle itself is not a GBA button.
+    CHECK(m.poll() == 0);
+
+    // Aim up holds L and drops Down; aim down holds L + Down and drops Up.
+    press(SDL_GAMEPAD_BUTTON_LEFT_PADDLE1, true);
+    CHECK(m.poll_frame() == bit(Button::L));
+    press(SDL_GAMEPAD_BUTTON_DPAD_DOWN, true);
+    CHECK(m.poll_frame() == bit(Button::L));
+    press(SDL_GAMEPAD_BUTTON_DPAD_DOWN, false);
+    press(SDL_GAMEPAD_BUTTON_LEFT_PADDLE1, false);
+    CHECK(m.poll_frame() == 0);
+    press(SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2, true);
+    // L alone first, so the game is aiming diagonally before Down arrives and Samus doesn't crouch.
+    CHECK(m.poll_frame() == bit(Button::L));
+    CHECK(m.poll_frame() == bit(Button::L));
+    CHECK(m.poll_frame() == (bit(Button::L) | bit(Button::Down)));
+    press(SDL_GAMEPAD_BUTTON_DPAD_UP, true);
+    CHECK(m.poll_frame() == (bit(Button::L) | bit(Button::Down)));
+    press(SDL_GAMEPAD_BUTTON_DPAD_UP, false);
+    // Straight from aiming down to aiming up: one frame of Up resets the game's diagonal.
+    press(SDL_GAMEPAD_BUTTON_LEFT_PADDLE1, true);
+    press(SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2, false);
+    CHECK(m.poll_frame() == (bit(Button::L) | bit(Button::Up)));
+    CHECK(m.poll_frame() == bit(Button::L));
+    release_all();
+    CHECK(m.poll_frame() == 0);
+
+    // Right stick aiming is off by default, then aims up or down when turned on.
+    tilt(SDL_GAMEPAD_AXIS_RIGHTY, -32768);
+    CHECK(m.poll_frame() == 0);
+    ini["input.right_stick_aim"] = "true";
+    m.reload();
+    CHECK(m.poll_frame() == bit(Button::L));
+    tilt(SDL_GAMEPAD_AXIS_RIGHTY, 32767);  // straight from up: already diagonal, Down right away
+    CHECK(m.poll_frame() == (bit(Button::L) | bit(Button::Down)));
+    tilt(SDL_GAMEPAD_AXIS_RIGHTY, 5000);  // inside the dead zone
+    CHECK(m.poll_frame() == 0);
+    release_all();
+
+    // Rebinding an action takes the next controller button and frees it from GBA buttons.
+    m.start_remap(Action::MissileToggle);
+    CHECK(m.remapping() && m.action_remap_target() == Action::MissileToggle);
+    SDL_Event e{};
+    e.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+    e.gbutton.which = SDL_GetJoystickID(g_joy);
+    e.gbutton.button = SDL_GAMEPAD_BUTTON_NORTH;
+    CHECK(m.handle_event(e));
+    CHECK(!m.remapping());
+    CHECK(m.describe(Action::MissileToggle) == "Y Button");
+    CHECK(ini["input.action.missile_toggle"] == "pad:y");
+    CHECK(ini["input.A"].find("pad:y") == std::string::npos);
+    m.clear(Action::MissileToggle);
+    CHECK(m.describe(Action::MissileToggle) == "None");
+    m.reset_to_defaults();
+}
+
+// A controller SDL has no layout for is read as a raw joystick, and its buttons and hat bind
+// by number.
+void raw_joystick(Manager& m, SDL_Joystick* raw) {
+    CHECK(m.gamepad_count() == 2);
+    m.start_remap(Button::A);
+    SDL_Event e{};
+    e.type = SDL_EVENT_JOYSTICK_BUTTON_DOWN;
+    e.jbutton.which = SDL_GetJoystickID(raw);
+    e.jbutton.button = 9;
+    CHECK(m.handle_event(e));
+    CHECK(!m.remapping());
+    CHECK(m.describe(Button::A).find("Joystick Button 10") != std::string::npos);
+    SDL_SetJoystickVirtualButton(raw, 9, true);
+    settle();
+    CHECK(m.poll() == bit(Button::A));
+    SDL_SetJoystickVirtualButton(raw, 9, false);
+    settle();
+    CHECK(m.poll() == 0);
+
+    m.start_remap(Button::Up);
+    e = {};
+    e.type = SDL_EVENT_JOYSTICK_HAT_MOTION;
+    e.jhat.which = SDL_GetJoystickID(raw);
+    e.jhat.hat = 0;
+    e.jhat.value = SDL_HAT_LEFTUP;
+    CHECK(m.handle_event(e));
+    CHECK(m.describe(Button::Up).find("Joystick Hat 1 Up") != std::string::npos);
+    SDL_SetJoystickVirtualHat(raw, 0, SDL_HAT_RIGHTUP);
+    settle();
+    CHECK(m.poll() == bit(Button::Up));
+    SDL_SetJoystickVirtualHat(raw, 0, SDL_HAT_CENTERED);
+    settle();
+
+    // A standard pad's own buttons still bind by name, not as raw joystick buttons.
+    m.start_remap(Button::B);
+    e = {};
+    e.type = SDL_EVENT_JOYSTICK_BUTTON_DOWN;
+    e.jbutton.which = SDL_GetJoystickID(g_joy);
+    e.jbutton.button = 0;
+    CHECK(m.handle_event(e));
+    CHECK(m.remapping());  // ignored, still waiting
+    m.cancel_remap();
+    m.reset_to_defaults();
+}
 }  // namespace
 
 int main() {
@@ -216,6 +381,7 @@ int main() {
         return 1;
     }
     release_all();
+    binding_strings();
     {
         std::map<std::string, std::string> store;
         metrofuse::SettingsIO io;
@@ -228,6 +394,34 @@ int main() {
         Manager m(io);
         gamepad(m);
         shortcuts(m);
+        actions(store, m);
+    }
+    {
+        SDL_VirtualJoystickDesc rd;
+        SDL_INIT_INTERFACE(&rd);
+        rd.type = SDL_JOYSTICK_TYPE_UNKNOWN;
+        rd.naxes = 2;
+        rd.nbuttons = 16;
+        rd.nhats = 1;
+        rd.name = "MetroFuse test arcade stick";
+        const SDL_JoystickID rid = SDL_AttachVirtualJoystick(&rd);
+        SDL_Joystick* raw = rid ? SDL_OpenJoystick(rid) : nullptr;
+        CHECK(raw && !SDL_IsGamepad(rid));
+        settle();
+        if (raw) {
+            std::map<std::string, std::string> store;
+            metrofuse::SettingsIO io;
+            io.get = [&](const std::string& k, const std::string& fb) {
+                auto it = store.find(k);
+                return it == store.end() ? fb : it->second;
+            };
+            io.set = [&](const std::string& k, const std::string& v) { store[k] = v; };
+            io.save = [] {};
+            Manager m(io);
+            raw_joystick(m, raw);
+            SDL_CloseJoystick(raw);
+        }
+        if (rid) SDL_DetachVirtualJoystick(rid);
     }
     SDL_CloseJoystick(g_joy);
     SDL_DetachVirtualJoystick(id);
