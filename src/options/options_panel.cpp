@@ -178,6 +178,9 @@ void controls_tab(input::Manager& in, Config& config) {
                        "stick direction. A keyboard key replaces the keyboard binding and a "
                        "controller input replaces the controller binding, so both keep working.");
     ImGui::Text("Controllers connected: %d", in.gamepad_count());
+    help_marker("Any button your controller reports can be bound, including paddles, back "
+                "buttons and extra buttons, and mouse buttons 4 and 5. Buttons remapped by "
+                "Steam Input or another remapper work as whatever they send.");
     ImGui::Spacing();
 
     if (ImGui::BeginTable("bindings", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
@@ -205,6 +208,52 @@ void controls_tab(input::Manager& in, Config& config) {
             ImGui::PopID();
         }
         ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+    ImGui::SeparatorText("Extra controls");
+    ImGui::TextWrapped("Optional buttons for things the GBA does with held buttons. They start "
+                       "unbound, and are a good use for paddles, back buttons and other extras.");
+    ImGui::TextDisabled("How they work");
+    help_marker("Missile toggle: press once to arm missiles and again to go back to the beam, "
+                "instead of holding R. In morph ball it arms power bombs, like holding R.\n\n"
+                "Aim diagonally up / down: hold to aim, instead of holding L (and L + Down).");
+    const input::Action act_waiting = in.action_remap_target();
+    if (ImGui::BeginTable("actions", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
+                                            ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed,
+                                ImGui::CalcTextSize(input::name(input::Action::AimDown)).x);
+        ImGui::TableSetupColumn("Bound to");
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableHeadersRow();
+        for (int i = 0; i < input::kActionCount; ++i) {
+            const auto a = input::Action(i);
+            ImGui::PushID(300 + i);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(input::name(a));
+            ImGui::TableNextColumn();
+            if (act_waiting == a) ImGui::TextUnformatted("Press a key or button...  (Esc to keep)");
+            else ImGui::TextWrapped("%s", in.describe(a).c_str());
+            ImGui::TableNextColumn();
+            ImGui::BeginDisabled(in.remapping());
+            if (ImGui::SmallButton("Rebind")) in.start_remap(a);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Clear")) in.clear(a);
+            ImGui::EndDisabled();
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    {
+        bool stick = config.get_bool("input.right_stick_aim", in.config().right_stick_aim);
+        if (ImGui::Checkbox("Right stick aims diagonally", &stick)) {
+            config.set_bool("input.right_stick_aim", stick);
+            in.reload();
+        }
+        help_marker("Push the right stick up or down to aim diagonally up or down. Leave it off "
+                    "if you bound the right stick to GBA buttons.");
     }
 
     ImGui::Spacing();

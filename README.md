@@ -81,6 +81,20 @@ Defaults; change them in Settings > Controls.
 | Previous / next slot | F6 / F7 | Back + D-pad left / right |
 | Fullscreen | F11 | |
 
+Settings > Controls > Extra controls adds optional buttons, all unbound until you set them:
+
+- **Missile toggle**: press once to arm missiles, press again to go back to the beam (instead of
+  holding R). In morph ball it arms power bombs, the same as holding R.
+- **Aim diagonally up / down**: hold to aim, instead of holding L (and L + Down).
+- **Right stick aims diagonally**: push the right stick up or down to aim.
+
+START already opens the map in Fusion, so there is no separate map button.
+
+Any button a controller reports can be bound, including paddles, back buttons, extra buttons,
+D-pads on arcade sticks, and mouse buttons 4 and 5. Controllers SDL has no layout for are read
+as raw joysticks, so their buttons show up by number. Buttons remapped by Steam Input or another
+remapper work as whatever key or button they send.
+
 Quick save and quick load use the Auto slot until you pick another slot (F6 / F7, or click a slot in
 the States tab). Closing the game also saves to the Auto slot.
 

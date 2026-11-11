@@ -19,13 +19,19 @@ inline constexpr int kButtonCount = static_cast<int>(Button::Count);
 const char* name(Button b);
 
 struct Binding {
-    enum class Kind { Key, PadButton, PadAxis } kind = Kind::Key;
-    int code = 0;      // SDL_Scancode, SDL_GamepadButton or SDL_GamepadAxis
-    int dir = 0;       // PadAxis only: -1 or +1
+    // Key, PadButton and PadAxis use SDL's standard gamepad layout. The Joy* kinds read the raw
+    // device for buttons a controller has beyond that layout (or for controllers SDL has no
+    // layout for), and Mouse covers the extra mouse buttons that remappers such as Steam Input
+    // can send.
+    enum class Kind { Key, PadButton, PadAxis, JoyButton, JoyAxis, JoyHat, Mouse } kind = Kind::Key;
+    int code = 0;      // SDL_Scancode, SDL_GamepadButton, SDL_GamepadAxis, raw button/axis/hat index,
+                       // or SDL mouse button (middle, X1, X2)
+    int dir = 0;       // PadAxis/JoyAxis: -1 or +1. JoyHat: SDL_HAT_UP/DOWN/LEFT/RIGHT
     bool operator==(const Binding&) const = default;
 };
 
-// "key:X", "pad:a", "axis:leftx-", "axis:righttrigger+"
+// "key:X", "pad:a", "axis:leftx-", "axis:righttrigger+", "joy:button12", "joy:axis4+",
+// "joy:hat0up", "mouse:x1"
 std::string to_string(const Binding& b);
 bool from_string(const std::string& s, Binding& out);
 // Friendly name for menus and messages: "Up Arrow", "Left D-Pad", "A Button", "Left Stick Up".
@@ -45,9 +51,20 @@ bool chord_from_string(const std::string& s, Chord& out);
 std::string join_chords(const std::vector<Chord>& list);
 std::vector<Chord> split_chords(const std::string& text);
 
+// Extra controls that drive GBA buttons for you, stored as input.action.<id> (id from key_name).
+// All are unbound by default.
+//   MissileToggle: each press arms or disarms missiles, so R stays held until pressed again.
+//   AimUp / AimDown: hold to aim diagonally up or down (the game's L, and L + Down).
+enum class Action { MissileToggle, AimUp, AimDown, Count };
+inline constexpr int kActionCount = static_cast<int>(Action::Count);
+const char* name(Action a);      // "Missile toggle"
+const char* key_name(Action a);  // "missile_toggle"
+
 struct Config {
     std::array<std::vector<Binding>, kButtonCount> buttons;
     std::array<std::vector<Chord>, kHotkeyCount> hotkeys;
+    std::array<std::vector<Binding>, kActionCount> actions;
+    bool right_stick_aim = false;  // input.right_stick_aim: right stick up/down aims diagonally
     int deadzone_percent = 40;  // stick and trigger threshold
     TurboSettings turbo;
 };
@@ -75,10 +92,12 @@ public:
     // should not use it again.
     bool handle_event(const SDL_Event& e);
 
-    // Current GBA KEYINPUT-style mask (1 = pressed). Empty while remapping.
+    // Current GBA KEYINPUT-style mask (1 = pressed) from the button bindings. Empty while remapping.
     std::uint16_t poll() const;
-    // poll() with turbo applied. Call once per emulated frame; turbo timing counts these calls.
+    // poll() with turbo and the extra actions applied. Call once per emulated frame; turbo timing
+    // and the missile toggle count these calls.
     std::uint16_t poll_frame();
+    bool missiles_armed() const { return missiles_armed_; }
 
     // Remapping walks through every button in turn. The first key, pad button or stick
     // direction pressed replaces that button's bindings for that device type.
@@ -91,21 +110,42 @@ public:
     void start_remap(Hotkey only);
     Hotkey hotkey_remap_target() const { return hotkey_remap_; }
     void clear(Hotkey h);  // unbinds a shortcut
+    // Rebinds one extra action: the next key, controller button, stick direction or mouse button.
+    void start_remap(Action only);
+    Action action_remap_target() const { return action_remap_; }
+    void clear(Action a);
     // Off for the settings menu's own instance, so shortcuts never fire while it is open.
     void set_shortcuts_enabled(bool on) { shortcuts_enabled_ = on; }
     void cancel_remap();
     void reload();  // re-read bindings from the config
-    bool remapping() const { return remap_index_ >= 0 || hotkey_remap_ != Hotkey::Count; }
+    bool remapping() const {
+        return remap_index_ >= 0 || hotkey_remap_ != Hotkey::Count || action_remap_ != Action::Count;
+    }
     std::string remap_prompt() const;  // empty when not remapping
 
     void reset_to_defaults();
     const Config& config() const { return config_; }
     std::string describe(Button b) const;  // "X, A Button" style summary for menus and messages
     std::string describe(Hotkey h) const;  // "Page Up, Back Button + Right Bumper"
+    std::string describe(Action a) const;  // "Right Paddle 1" or "None"
     std::string take_message();           // one-shot status text for the on-screen display
-    int gamepad_count() const { return int(pads_.size()); }
+    int gamepad_count() const { return int(devices_.size()); }
 
 private:
+    // One open controller: a gamepad (pad set) or a raw joystick SDL has no layout for.
+    struct Device {
+        SDL_Gamepad* pad = nullptr;
+        SDL_Joystick* joy = nullptr;  // owned only when pad is null
+        // Raw inputs the gamepad layout already covers, so they are not bound twice.
+        std::vector<bool> mapped_buttons, mapped_axes, mapped_hats;
+        SDL_JoystickID id = 0;
+    };
+    void open_gamepad(SDL_JoystickID id);
+    void open_joystick(SDL_JoystickID id);
+    void close_device(SDL_JoystickID id);
+    const Device* device(SDL_JoystickID id) const;
+    bool held(const Binding& b, int threshold) const;
+    bool held(Action a, int threshold) const;
     void save() const;
     void assign(const Binding& b);
     void advance();
@@ -114,10 +154,16 @@ private:
 
     SettingsIO io_;
     Config config_;
-    std::vector<SDL_Gamepad*> pads_;
+    std::vector<Device> devices_;
     int remap_index_ = -1;
     bool remap_single_ = false;
     std::array<bool, SDL_GAMEPAD_AXIS_COUNT> axis_armed_{};  // axis returned to center since prompt
+    static constexpr int kMaxJoyAxes = 32;
+    std::array<bool, kMaxJoyAxes> joy_axis_armed_{};          // same for raw joystick axes
+    Action action_remap_ = Action::Count;
+    bool missiles_armed_ = false;
+    bool toggle_was_held_ = false;
+    int last_aim_ = 0;  // -1 up, +1 down, 0 none, as sent last frame
     std::string message_;
     Hotkey hotkey_remap_ = Hotkey::Count;
     bool shortcuts_enabled_ = true;
