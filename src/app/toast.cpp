@@ -41,8 +41,8 @@ ImVec4 accent(Style s) {
     switch (s) {
         case Style::Success: return c.good;
         case Style::Warning: return c.bad;
-        case Style::Achievement: return c.gold;
-        default: return c.cyan;
+        case Style::Achievement: return c.highlight;
+        default: return c.accent;
     }
 }
 
@@ -162,7 +162,7 @@ void draw() {
         if (!t.body.empty()) {
             ImGui::PushFont(theme::font_small());
             ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 320.0f);
-            ImGui::TextColored(c.text_dim, "%s", t.body.c_str());
+            ImGui::TextColored(c.ink_muted, "%s", t.body.c_str());
             ImGui::PopTextWrapPos();
             ImGui::PopFont();
         }
