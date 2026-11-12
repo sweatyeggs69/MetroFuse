@@ -51,7 +51,5 @@ inline constexpr unsigned kSuitMorphBall = 1u << 6;
 
 // Samus's state (struct SamusData at gSamusData in the community disassembly). +1 u8 pose.
 inline constexpr unsigned kSamusDataAddress = 0x03001244;
-// Pose while crouched on the ground; a new Down press here morphs if the Morph Ball is owned.
-inline constexpr unsigned kPoseCrouching = 7;
 
 }  // namespace metrofuse::game

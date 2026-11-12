@@ -367,563 +367,571 @@ msgstr "El archivo no es la BIOS original de GBA; se usa la BIOS integrada."
 msgid "F1 or Esc: settings menu"
 msgstr "F1 o Esc: menú de ajustes"
 
-#: src/app/app.cpp:660
+#: src/app/app.cpp:659
 msgid "{0}, native on your computer"
 msgstr "{0}, nativo en tu ordenador"
 
-#: src/app/app.cpp:663
+#: src/app/app.cpp:662
 msgid "To play, choose your own copy of the game: a ROM file dumped from your cartridge of {0}."
 msgstr "Para jugar, elige tu propia copia del juego: un archivo ROM volcado de tu cartucho de {0}."
 
-#: src/app/app.cpp:666
+#: src/app/app.cpp:665
 msgid "MetroFuse only remembers where the file is. It never copies, uploads or changes it."
 msgstr "MetroFuse solo recuerda dónde está el archivo. Nunca lo copia, lo sube ni lo modifica."
 
-#: src/app/app.cpp:672
+#: src/app/app.cpp:671
 msgid "Choose ROM..."
 msgstr "Elegir ROM..."
 
-#: src/app/app.cpp:681
+#: src/app/app.cpp:680
 msgid "Quit"
 msgstr "Salir"
 
-#: src/app/app.cpp:691
+#: src/app/app.cpp:690
 msgid "just now"
 msgstr "ahora mismo"
 
-#: src/app/app.cpp:692
+#: src/app/app.cpp:691
 msgid "1 minute ago"
 msgstr "hace 1 minuto"
 
-#: src/app/app.cpp:692
+#: src/app/app.cpp:691
 msgid "{0} minutes ago"
 msgstr "hace {0} minutos"
 
-#: src/app/app.cpp:693
+#: src/app/app.cpp:692
 msgid "1 hour ago"
 msgstr "hace 1 hora"
 
-#: src/app/app.cpp:693
+#: src/app/app.cpp:692
 msgid "{0} hours ago"
 msgstr "hace {0} horas"
 
-#: src/app/app.cpp:694
+#: src/app/app.cpp:693
 msgid "1 day ago"
 msgstr "hace 1 día"
 
-#: src/app/app.cpp:694
+#: src/app/app.cpp:693
 msgid "{0} days ago"
 msgstr "hace {0} días"
 
-#: src/app/app.cpp:719
+#: src/app/app.cpp:718
 msgid "Resume"
 msgstr "Reanudar"
 
-#: src/app/app.cpp:721
+#: src/app/app.cpp:720
 msgid "Restart"
 msgstr "Reiniciar"
 
-#: src/app/app.cpp:727
+#: src/app/app.cpp:726
 msgid "Continue"
 msgstr "Continuar"
 
-#: src/app/app.cpp:730
+#: src/app/app.cpp:729
 msgid "Play from the title screen"
 msgstr "Jugar desde la pantalla de título"
 
-#: src/app/app.cpp:733
+#: src/app/app.cpp:732
 msgid "Play"
 msgstr "Jugar"
 
-#: src/app/app.cpp:737
+#: src/app/app.cpp:736
 msgid "Settings"
 msgstr "Ajustes"
 
-#: src/app/app.cpp:767
+#: src/app/app.cpp:766
 msgid "ROM verified"
 msgstr "ROM verificada"
 
-#: src/app/app.cpp:769
+#: src/app/app.cpp:768
 msgid "Saved {0}"
 msgstr "Guardado {0}"
 
-#: src/app/app.cpp:843
+#: src/app/app.cpp:849
 msgid "unbound"
 msgstr "sin asignar"
 
-#: src/app/app.cpp:846
+#: src/app/app.cpp:852
 msgid "{0} save  {1} new  {2} load  {3}/{4} slot"
 msgstr "{0} guardar  {1} nuevo  {2} cargar  {3}/{4} ranura"
 
-#: src/app/app.cpp:849
+#: src/app/app.cpp:855
 msgid "save {0}; save to new slot {1}; load {2}; previous slot {3}; next slot {4}"
 msgstr "guardar {0}; guardar en ranura nueva {1}; cargar {2}; ranura anterior {3}; ranura siguiente {4}"
 
-#: src/app/app.cpp:880
+#: src/app/app.cpp:886
 msgid "Slot {0} overwritten"
 msgstr "Ranura {0} sobrescrita"
 
-#: src/app/app.cpp:880
+#: src/app/app.cpp:886
 msgid "State saved to slot {0}"
 msgstr "Estado guardado en la ranura {0}"
 
-#: src/app/app.cpp:882
+#: src/app/app.cpp:888
 msgid "Could not save the state"
 msgstr "No se pudo guardar el estado"
 
-#: src/app/app.cpp:883
+#: src/app/app.cpp:889
 msgid "Overwrote {0}."
 msgstr "{0} sobrescrita."
 
-#: src/app/app.cpp:883
+#: src/app/app.cpp:889
 msgid "Saved to {0}."
 msgstr "Guardado en {0}."
 
-#: src/app/app.cpp:896
+#: src/app/app.cpp:902
 msgid "All {0} slots are full. Delete one in the States tab, or save over the current slot."
 msgstr "Las {0} ranuras están llenas. Borra una en la pestaña Estados o guarda sobre la ranura actual."
 
-#: src/app/app.cpp:898
+#: src/app/app.cpp:904
 msgid "No empty slot"
 msgstr "No hay ranuras libres"
 
-#: src/app/app.cpp:925
+#: src/app/app.cpp:931
 msgid "{0} is empty."
 msgstr "{0} está vacía."
 
-#: src/app/app.cpp:936
+#: src/app/app.cpp:942
 msgid "Could not load the state"
 msgstr "No se pudo cargar el estado"
 
-#: src/app/app.cpp:944
+#: src/app/app.cpp:950
 msgid "State loaded from slot {0}"
 msgstr "Estado cargado de la ranura {0}"
 
-#: src/app/app.cpp:945
+#: src/app/app.cpp:951
 msgid "Loaded {0}."
 msgstr "{0} cargada."
 
-#: src/app/app.cpp:971
+#: src/app/app.cpp:977
 msgid "No ROM is chosen yet."
 msgstr "Aún no se ha elegido ninguna ROM."
 
-#: src/app/app.cpp:986
+#: src/app/app.cpp:992
 msgid "Couldn't auto-load the save state"
 msgstr "No se pudo cargar el estado automáticamente"
 
-#: src/app/app.cpp:986
+#: src/app/app.cpp:992
 msgid "Couldn't start the game"
 msgstr "No se pudo iniciar el juego"
 
-#: src/app/app.cpp:1003
+#: src/app/app.cpp:1009
 msgid "Choose your ROM first (Game tab)."
 msgstr "Primero elige tu ROM (pestaña Juego)."
 
-#: src/app/app.cpp:1006
+#: src/app/app.cpp:1012
 msgid "Shortcuts in game: {0}. Current: {1}. Change them in Controls."
 msgstr "Atajos en el juego: {0}. Actual: {1}. Cámbialos en Controles."
 
-#: src/app/app.cpp:1009
+#: src/app/app.cpp:1015
 msgid "Undo last load"
 msgstr "Deshacer la última carga"
 
-#: src/app/app.cpp:1014
+#: src/app/app.cpp:1020
 msgid "Went back to before the last load."
 msgstr "Se volvió a antes de la última carga."
 
-#: src/app/app.cpp:1019
+#: src/app/app.cpp:1025
 msgid "Show folder"
 msgstr "Mostrar carpeta"
 
-#: src/app/app.cpp:1022
+#: src/app/app.cpp:1028
 msgid "Save to new slot"
 msgstr "Guardar en ranura nueva"
 
-#: src/app/app.cpp:1026
+#: src/app/app.cpp:1032
 msgid "Overwrite the current slot"
 msgstr "Sobrescribir la ranura actual"
 
-#: src/app/app.cpp:1026
+#: src/app/app.cpp:1032
 msgid "Save to a new slot each time"
 msgstr "Guardar en una ranura nueva cada vez"
 
-#: src/app/app.cpp:1028
+#: src/app/app.cpp:1034
 msgid "Save state shortcut:"
 msgstr "Atajo de guardar estado:"
 
-#: src/app/app.cpp:1073
+#: src/app/app.cpp:1079
 msgid "Unusable"
 msgstr "Inutilizable"
 
-#: src/app/app.cpp:1073
+#: src/app/app.cpp:1079
 msgid "Empty"
 msgstr "Vacía"
 
-#: src/app/app.cpp:1092
+#: src/app/app.cpp:1098
 msgid "%b %d, %H:%M"
 msgstr "%d/%m, %H:%M"
 
-#: src/app/app.cpp:1093
+#: src/app/app.cpp:1099
 msgid "{0}  |  {1} played"
 msgstr "{0}  |  {1} jugado"
 
-#: src/app/app.cpp:1095
+#: src/app/app.cpp:1101
 msgid "No state saved yet"
 msgstr "Aún no hay estado guardado"
 
-#: src/app/app.cpp:1103
+#: src/app/app.cpp:1109
 msgid "Save"
 msgstr "Guardar"
 
-#: src/app/app.cpp:1107
+#: src/app/app.cpp:1113
 msgid "Load"
 msgstr "Cargar"
 
-#: src/app/app.cpp:1116
+#: src/app/app.cpp:1122
 msgid "Rename..."
 msgstr "Renombrar..."
 
-#: src/app/app.cpp:1120
+#: src/app/app.cpp:1126
 msgid "Export..."
 msgstr "Exportar..."
 
-#: src/app/app.cpp:1123
+#: src/app/app.cpp:1129
 msgid "MetroFuse save state"
 msgstr "Estado guardado de MetroFuse"
 
-#: src/app/app.cpp:1133
+#: src/app/app.cpp:1139
 msgid "Import into this slot..."
 msgstr "Importar en esta ranura..."
 
-#: src/app/app.cpp:1146
+#: src/app/app.cpp:1152
 msgid "Delete..."
 msgstr "Borrar..."
 
-#: src/app/app.cpp:1158
+#: src/app/app.cpp:1164
 msgid "Rename state"
 msgstr "Renombrar estado"
 
-#: src/app/app.cpp:1160
+#: src/app/app.cpp:1166
 msgid "Label for {0}:"
 msgstr "Nombre para {0}:"
 
-#: src/app/app.cpp:1174
+#: src/app/app.cpp:1180
 msgid "Delete state?"
 msgstr "¿Borrar el estado?"
 
-#: src/app/app.cpp:1176
+#: src/app/app.cpp:1182
 msgid "Delete {0}? It is moved to the Trash."
 msgstr "¿Borrar {0}? Se moverá a la papelera."
 
-#: src/app/app.cpp:1177
+#: src/app/app.cpp:1183
 msgid "Delete"
 msgstr "Borrar"
 
-#: src/app/app.cpp:1180
+#: src/app/app.cpp:1186
 msgid "{0} moved to the Trash."
 msgstr "{0} movida a la papelera."
 
-#: src/app/app.cpp:1201
+#: src/app/app.cpp:1207
 msgid "Could not read {0}"
 msgstr "No se pudo leer {0}"
 
-#: src/app/app.cpp:1220
+#: src/app/app.cpp:1226
 msgid "Could not write the save file {0}"
 msgstr "No se pudo escribir el archivo de guardado {0}"
 
-#: src/app/app.cpp:1230
+#: src/app/app.cpp:1236
 msgid "Imported {0}."
 msgstr "{0} importado."
 
-#: src/app/app.cpp:1231
+#: src/app/app.cpp:1237
 msgid "Imported {0}. The previous save was backed up."
 msgstr "{0} importado. Se hizo una copia de la partida anterior."
 
-#: src/app/app.cpp:1232
+#: src/app/app.cpp:1238
 msgid "The game was restarted."
 msgstr "El juego se reinició."
 
-#: src/app/app.cpp:1243
+#: src/app/app.cpp:1249
 msgid "There is no save to export yet. Play the game first."
 msgstr "Aún no hay partida que exportar. Juega primero."
 
-#: src/app/app.cpp:1250
+#: src/app/app.cpp:1256
 msgid "Could not write {0}"
 msgstr "No se pudo escribir {0}"
 
-#: src/app/app.cpp:1253
+#: src/app/app.cpp:1259
 msgid "Exported to {0} (raw 32 KiB, works in mGBA, VBA-M and RetroArch)."
 msgstr "Exportado a {0} (32 KiB sin formato, funciona en mGBA, VBA-M y RetroArch)."
 
-#: src/app/app.cpp:1258
+#: src/app/app.cpp:1264
 msgid "Saves"
 msgstr "Partidas guardadas"
 
-#: src/app/app.cpp:1261
+#: src/app/app.cpp:1267
 msgid "Show save folder"
 msgstr "Mostrar carpeta de partidas"
 
-#: src/app/app.cpp:1267
+#: src/app/app.cpp:1273
 msgid "Import save..."
 msgstr "Importar partida..."
 
-#: src/app/app.cpp:1270
+#: src/app/app.cpp:1276
 msgid "Game saves"
 msgstr "Partidas guardadas"
 
-#: src/app/app.cpp:1280
+#: src/app/app.cpp:1286
 msgid "Export save..."
 msgstr "Exportar partida..."
 
-#: src/app/app.cpp:1283
+#: src/app/app.cpp:1289
 msgid "Game save"
 msgstr "Partida guardada"
 
-#: src/app/app.cpp:1293
+#: src/app/app.cpp:1299
 msgid "Restore backup..."
 msgstr "Restaurar copia..."
 
-#: src/app/app.cpp:1296
+#: src/app/app.cpp:1302
 msgid "Imports .sav / .srm battery saves from mGBA, VBA-M, RetroArch and others."
 msgstr "Importa partidas .sav / .srm de mGBA, VBA-M, RetroArch y otros."
 
-#: src/app/app.cpp:1304
+#: src/app/app.cpp:1310
 msgid "Replace your save?"
 msgstr "¿Reemplazar tu partida?"
 
-#: src/app/app.cpp:1309
+#: src/app/app.cpp:1315
 msgid "Use {0} as your save?"
 msgstr "¿Usar {0} como tu partida?"
 
-#: src/app/app.cpp:1311
+#: src/app/app.cpp:1317
 msgid "Your current save is backed up first (the last 10 are kept)."
 msgstr "Primero se copia tu partida actual (se guardan las 10 últimas)."
 
-#: src/app/app.cpp:1313
+#: src/app/app.cpp:1319
 msgid "Importing restarts the game; unsaved progress is lost."
 msgstr "Importar reinicia el juego; se pierde el progreso sin guardar."
 
-#: src/app/app.cpp:1317
+#: src/app/app.cpp:1323
 msgid "Replace save"
 msgstr "Reemplazar partida"
 
-#: src/app/app.cpp:1330
+#: src/app/app.cpp:1336
 msgid "Restore a backup"
 msgstr "Restaurar una copia"
 
-#: src/app/app.cpp:1336
+#: src/app/app.cpp:1342
 msgid "No backups yet. One is made every time a save is replaced."
 msgstr "Aún no hay copias. Se hace una cada vez que se reemplaza una partida."
 
-#: src/app/app.cpp:1349
+#: src/app/app.cpp:1355
 msgid "the backup from {0}"
 msgstr "la copia del {0}"
 
-#: src/app/app.cpp:1349
+#: src/app/app.cpp:1355
 msgid "backup"
 msgstr "copia"
 
-#: src/app/app.cpp:1371
+#: src/app/app.cpp:1377
 msgid "Supplies"
 msgstr "Suministros"
 
-#: src/app/app.cpp:1376
+#: src/app/app.cpp:1382
 msgid "Unlimited health"
 msgstr "Energía ilimitada"
 
-#: src/app/app.cpp:1376
+#: src/app/app.cpp:1382
 msgid "Energy stays full, so damage never drains it."
 msgstr "La energía se mantiene llena, así que el daño nunca la reduce."
 
-#: src/app/app.cpp:1377
+#: src/app/app.cpp:1383
 msgid "Unlimited missiles"
 msgstr "Misiles ilimitados"
 
-#: src/app/app.cpp:1377
+#: src/app/app.cpp:1383
 msgid "Missiles refill as fast as you fire them. Does not unlock them early."
 msgstr "Los misiles se recargan tan rápido como los disparas. No los desbloquea antes de tiempo."
 
-#: src/app/app.cpp:1378
+#: src/app/app.cpp:1384
 msgid "Unlimited power bombs"
 msgstr "Bombas de energía ilimitadas"
 
-#: src/app/app.cpp:1378
+#: src/app/app.cpp:1384
 msgid "Power bombs refill after each one. Does not unlock them early."
 msgstr "Las bombas de energía se recargan después de cada una. No las desbloquea antes de tiempo."
 
-#: src/app/app.cpp:1392
+#: src/app/app.cpp:1398
 msgid "Cheats and mods are off while RetroAchievements hardcore mode is on."
 msgstr "Los trucos y mods están desactivados en el modo hardcore de RetroAchievements."
 
-#: src/app/app.cpp:1393
+#: src/app/app.cpp:1399
 msgid "Supplies refill up to your current maximum. Cheats stay on until you turn them off."
 msgstr "Los suministros se recargan hasta tu máximo actual. Los trucos siguen activos hasta que los desactives."
 
-#: src/app/app.cpp:1399
+#: src/app/app.cpp:1405
 msgid "Mods"
 msgstr "Mods"
 
+#: src/app/app.cpp:1409
+msgid "Auto Morph Ball"
+msgstr "Morfosfera automática"
+
 #: src/app/app.cpp:1411
+msgid "Run into a Morph Ball tunnel and Samus rolls in on her own. Needs the Morph Ball."
+msgstr "Corre hacia un túnel de Morfosfera y Samus entra rodando sola. Requiere la Morfosfera."
+
+#: src/app/app.cpp:1427
 msgid "Redux Mode"
 msgstr "Modo Redux"
 
-#: src/app/app.cpp:1419
+#: src/app/app.cpp:1435
 msgid "Custom"
 msgstr "Personalizado"
 
-#: src/app/app.cpp:1422
+#: src/app/app.cpp:1438
 msgid "Quality-of-life tweaks for the original game. Change them any time, even mid-game."
 msgstr "Mejoras de comodidad para el juego original. Cámbialas cuando quieras, incluso a mitad de partida."
 
-#: src/app/app.cpp:1432
+#: src/app/app.cpp:1448
 msgid "Not available for this ROM."
 msgstr "No disponible para esta ROM."
 
-#: src/app/app.cpp:1441
+#: src/app/app.cpp:1457
 msgid "Inspired by Metroid Fusion Redux by ShadowOne333 and the community hacks it collects. These are MetroFuse's own versions for the USA game; no Redux files are used."
 msgstr "Inspirado en Metroid Fusion Redux de ShadowOne333 y los hacks de la comunidad que reúne. Son versiones propias de MetroFuse para el juego de EE. UU.; no se usa ningún archivo de Redux."
 
-#: src/app/app.cpp:1450
+#: src/app/app.cpp:1466
 msgid "Game ROM"
 msgstr "ROM del juego"
 
-#: src/app/app.cpp:1453
+#: src/app/app.cpp:1469
 msgid "{0}, header match (fingerprint not pinned yet)"
 msgstr "{0}, cabecera coincidente (huella aún no fijada)"
 
-#: src/app/app.cpp:1455
+#: src/app/app.cpp:1471
 msgid "{0}, verified"
 msgstr "{0}, verificada"
 
-#: src/app/app.cpp:1465
+#: src/app/app.cpp:1481
 msgid "No ROM chosen"
 msgstr "Ninguna ROM elegida"
 
-#: src/app/app.cpp:1467
+#: src/app/app.cpp:1483
 msgid "Change ROM..."
 msgstr "Cambiar ROM..."
 
-#: src/app/app.cpp:1474
+#: src/app/app.cpp:1490
 msgid "Startup"
 msgstr "Inicio"
 
-#: src/app/app.cpp:1476
+#: src/app/app.cpp:1492
 msgid "Auto-load save state on launch"
 msgstr "Cargar el estado al abrir"
 
-#: src/app/app.cpp:1477
+#: src/app/app.cpp:1493
 msgid "Opening MetroFuse goes straight back to where you left off (your most recent save state)."
 msgstr "Al abrir MetroFuse vuelves directamente a donde lo dejaste (tu estado más reciente)."
 
-#: src/app/app.cpp:1478
+#: src/app/app.cpp:1494
 msgid "Hold Shift while opening MetroFuse to see this menu instead."
 msgstr "Mantén Mayús al abrir MetroFuse para ver este menú en su lugar."
 
-#: src/app/app.cpp:1482
+#: src/app/app.cpp:1498
 msgid "BIOS (optional)"
 msgstr "BIOS (opcional)"
 
-#: src/app/app.cpp:1488
+#: src/app/app.cpp:1504
 msgid "The BIOS file could not be read; using the built-in BIOS."
 msgstr "No se pudo leer el archivo de BIOS; se usa la BIOS integrada."
 
-#: src/app/app.cpp:1491
+#: src/app/app.cpp:1507
 msgid "Built-in BIOS. No file is needed."
 msgstr "BIOS integrada. No hace falta ningún archivo."
 
-#: src/app/app.cpp:1495
+#: src/app/app.cpp:1511
 msgid "Retail GBA BIOS verified: the Game Boy logo plays when the game starts, and the game runs on this BIOS."
 msgstr "BIOS original de GBA verificada: el logo de Game Boy aparece al iniciar y el juego usa esta BIOS."
 
-#: src/app/app.cpp:1500
+#: src/app/app.cpp:1516
 msgid "Use a BIOS file..."
 msgstr "Usar un archivo de BIOS..."
 
-#: src/app/app.cpp:1500
+#: src/app/app.cpp:1516
 msgid "Use the built-in BIOS"
 msgstr "Usar la BIOS integrada"
 
-#: src/app/app.cpp:1505
+#: src/app/app.cpp:1521
 msgid "Takes effect the next time the game starts."
 msgstr "Se aplica la próxima vez que se inicie el juego."
 
-#: src/app/app.cpp:1507
+#: src/app/app.cpp:1523
 msgid "Shortcut"
 msgstr "Acceso directo"
 
-#: src/app/app.cpp:1508
+#: src/app/app.cpp:1524
 msgid "A shortcut starts the game directly, skipping the launcher."
 msgstr "Un acceso directo inicia el juego sin pasar por el lanzador."
 
-#: src/app/app.cpp:1515
+#: src/app/app.cpp:1531
 msgid "Applications"
 msgstr "Aplicaciones"
 
-#: src/app/app.cpp:1517
+#: src/app/app.cpp:1533
 msgid "Start menu"
 msgstr "menú Inicio"
 
-#: src/app/app.cpp:1519
+#: src/app/app.cpp:1535
 msgid "applications menu"
 msgstr "menú de aplicaciones"
 
-#: src/app/app.cpp:1530
+#: src/app/app.cpp:1546
 msgid "Desktop"
 msgstr "Escritorio"
 
-#: src/app/app.cpp:1532
+#: src/app/app.cpp:1548
 msgid "Update {0} shortcut"
 msgstr "Actualizar acceso directo ({0})"
 
-#: src/app/app.cpp:1532
+#: src/app/app.cpp:1548
 msgid "Add to {0}"
 msgstr "Añadir a {0}"
 
-#: src/app/app.cpp:1543
+#: src/app/app.cpp:1559
 msgid "Remove"
 msgstr "Quitar"
 
-#: src/app/app.cpp:1543
+#: src/app/app.cpp:1559
 msgid "Remove shortcut"
 msgstr "Quitar acceso directo"
 
-#: src/app/app.cpp:1554
+#: src/app/app.cpp:1570
 msgid "Replace existing item?"
 msgstr "¿Reemplazar el elemento existente?"
 
-#: src/app/app.cpp:1559
+#: src/app/app.cpp:1575
 msgid "already exists and was not made by MetroFuse."
 msgstr "ya existe y no lo creó MetroFuse."
 
-#: src/app/app.cpp:1560
+#: src/app/app.cpp:1576
 msgid "Replace it? The existing item is moved to the Trash."
 msgstr "¿Reemplazarlo? El elemento existente se moverá a la papelera."
 
-#: src/app/app.cpp:1561
+#: src/app/app.cpp:1577
 msgid "Replace"
 msgstr "Reemplazar"
 
-#: src/app/app.cpp:1566
+#: src/app/app.cpp:1582
 msgid "Keep it"
 msgstr "Conservarlo"
 
-#: src/app/app.cpp:1567
+#: src/app/app.cpp:1583
 msgid "Left the existing item alone."
 msgstr "El elemento existente no se tocó."
 
-#: src/app/app.cpp:1673
+#: src/app/app.cpp:1689
 msgid "Exported {0}."
 msgstr "{0} exportada."
 
-#: src/app/app.cpp:1680
+#: src/app/app.cpp:1696
 msgid "Imported into {0}."
 msgstr "Importado en {0}."
 
-#: src/app/app.cpp:1689
+#: src/app/app.cpp:1705
 msgid "Could not read that BIOS file."
 msgstr "No se pudo leer ese archivo de BIOS."
 
-#: src/app/app.cpp:1691
+#: src/app/app.cpp:1707
 msgid "BIOS set. It is used the next time the game starts."
 msgstr "BIOS establecida. Se usará la próxima vez que se inicie el juego."
 
@@ -1475,319 +1483,307 @@ msgstr "Mando conectado: {0}"
 msgid "gamepad"
 msgstr "mando"
 
-#: src/options/options_panel.cpp:105
+#: src/options/options_panel.cpp:104
 msgid "Off (original 3:2)"
 msgstr "Desactivado (3:2 original)"
 
-#: src/options/options_panel.cpp:116
+#: src/options/options_panel.cpp:115
 msgid "Size and shape"
 msgstr "Tamaño y forma"
 
-#: src/options/options_panel.cpp:118
+#: src/options/options_panel.cpp:117
 msgid "Pixel perfect (integer scaling)"
 msgstr "Píxeles perfectos (escala entera)"
 
-#: src/options/options_panel.cpp:119
+#: src/options/options_panel.cpp:118
 msgid "Every GBA pixel becomes an exact block of screen pixels, so nothing shimmers or blurs. Leaves a small border when the window is not an exact multiple."
 msgstr "Cada píxel de GBA se convierte en un bloque exacto de píxeles de pantalla, así que nada parpadea ni se difumina. Deja un pequeño borde si la ventana no es un múltiplo exacto."
 
-#: src/options/options_panel.cpp:121
+#: src/options/options_panel.cpp:120
 msgid "Fit to window"
 msgstr "Ajustar a la ventana"
 
-#: src/options/options_panel.cpp:122
+#: src/options/options_panel.cpp:121
 msgid "Fills as much of the window as possible. Some pixels end up one screen pixel wider than others."
 msgstr "Llena la ventana todo lo posible. Algunos píxeles quedan un píxel de pantalla más anchos que otros."
 
-#: src/options/options_panel.cpp:129
+#: src/options/options_panel.cpp:128
 msgid "Widescreen view"
 msgstr "Vista panorámica"
 
-#: src/options/options_panel.cpp:139
+#: src/options/options_panel.cpp:138
 msgid "Shows more of the level at the left and right instead of stretching the picture. Pixels always stay square, and the HUD stays where it was. Menus and the title screen stay 3:2. Wider shapes are not offered: the game stops drawing enemies a little past the original view, so they would pop in at the sides."
 msgstr "Muestra más del nivel a izquierda y derecha en lugar de estirar la imagen. Los píxeles siguen siendo cuadrados y el HUD no se mueve. Los menús y la pantalla de título siguen en 3:2. No hay formatos más anchos: el juego deja de dibujar enemigos poco más allá de la vista original, así que aparecerían de golpe por los lados."
 
-#: src/options/options_panel.cpp:147
+#: src/options/options_panel.cpp:146
 msgid "Fullscreen"
 msgstr "Pantalla completa"
 
-#: src/options/options_panel.cpp:151
+#: src/options/options_panel.cpp:150
 msgid "F11 also switches fullscreen."
 msgstr "F11 también cambia a pantalla completa."
 
-#: src/options/options_panel.cpp:153
+#: src/options/options_panel.cpp:152
 msgid "Look"
 msgstr "Aspecto"
 
-#: src/options/options_panel.cpp:155
+#: src/options/options_panel.cpp:154
 msgid "Original GBA screen colors"
 msgstr "Colores originales de la pantalla de GBA"
 
-#: src/options/options_panel.cpp:159
+#: src/options/options_panel.cpp:158
 msgid "Softer, less saturated colors like the original unlit GBA screen. The game's colors were chosen for that screen, so this is how they were meant to look."
 msgstr "Colores más suaves y menos saturados, como la pantalla original sin luz de la GBA. Los colores del juego se eligieron para esa pantalla, así que así debían verse."
 
-#: src/options/options_panel.cpp:162
+#: src/options/options_panel.cpp:161
 msgid "Frame blending"
 msgstr "Mezcla de fotogramas"
 
-#: src/options/options_panel.cpp:162
+#: src/options/options_panel.cpp:161
 msgid "Off"
 msgstr "Desactivado"
 
-#: src/options/options_panel.cpp:163
+#: src/options/options_panel.cpp:162
 msgid "Blend two frames"
 msgstr "Mezclar dos fotogramas"
 
-#: src/options/options_panel.cpp:164
+#: src/options/options_panel.cpp:163
 msgid "LCD ghosting"
 msgstr "Estela LCD"
 
-#: src/options/options_panel.cpp:173
+#: src/options/options_panel.cpp:172
 msgid "GBA games flicker some sprites every other frame on purpose, counting on the slow GBA screen to smooth it out. Blending averages frames to match. LCD ghosting also leaves short trails like the real screen."
 msgstr "Los juegos de GBA hacen parpadear algunos sprites cada dos fotogramas a propósito, contando con que la lenta pantalla de la GBA lo suavice. La mezcla promedia fotogramas para imitarlo. La estela LCD además deja rastros cortos como la pantalla real."
 
-#: src/options/options_panel.cpp:177
+#: src/options/options_panel.cpp:176
 msgid "Pixel grid"
 msgstr "Rejilla de píxeles"
 
-#: src/options/options_panel.cpp:177
+#: src/options/options_panel.cpp:176
 msgid "LCD subpixels"
 msgstr "Subpíxeles LCD"
 
-#: src/options/options_panel.cpp:177
+#: src/options/options_panel.cpp:176
 msgid "Scanlines"
 msgstr "Líneas de escaneo"
 
-#: src/options/options_panel.cpp:179
+#: src/options/options_panel.cpp:178
 msgid "Screen overlay"
 msgstr "Filtro de pantalla"
 
-#: src/options/options_panel.cpp:183
+#: src/options/options_panel.cpp:182
 msgid "Pixel grid draws thin lines between pixels like the GBA's visible pixel gaps. LCD subpixels adds red, green and blue stripes. Overlays need at least 2x scaling (3x for subpixels)."
 msgstr "La rejilla de píxeles dibuja líneas finas entre píxeles como los huecos visibles de la GBA. Los subpíxeles LCD añaden franjas rojas, verdes y azules. Los filtros necesitan al menos escala 2x (3x para subpíxeles)."
 
-#: src/options/options_panel.cpp:187
+#: src/options/options_panel.cpp:186
 msgid "Overlay strength"
 msgstr "Intensidad del filtro"
 
-#: src/options/options_panel.cpp:202
+#: src/options/options_panel.cpp:201
 msgid "Press any key..."
 msgstr "Pulsa cualquier tecla..."
 
-#: src/options/options_panel.cpp:210
+#: src/options/options_panel.cpp:209
 msgid "Keyboard / Mouse"
 msgstr "Teclado / Ratón"
 
-#: src/options/options_panel.cpp:211
+#: src/options/options_panel.cpp:210
 msgid "Controller"
 msgstr "Mando"
 
-#: src/options/options_panel.cpp:245
+#: src/options/options_panel.cpp:244
 msgid "Buttons"
 msgstr "Botones"
 
-#: src/options/options_panel.cpp:247
+#: src/options/options_panel.cpp:246
 msgid "Select a binding and press Enter, A or click it, then press the new key or controller button. Keyboard and controller bindings are kept apart, so both keep working. Delete (Backspace) or X on a controller clears one."
 msgstr "Selecciona una asignación y pulsa Intro, A o haz clic, y luego pulsa la nueva tecla o botón del mando. Las asignaciones de teclado y mando van por separado, así que ambas siguen funcionando. Supr (Retroceso) o X en el mando borra una."
 
-#: src/options/options_panel.cpp:250
+#: src/options/options_panel.cpp:249
 msgid "Controllers connected: {0}"
 msgstr "Mandos conectados: {0}"
 
-#: src/options/options_panel.cpp:251
+#: src/options/options_panel.cpp:250
 msgid "Any button your controller reports can be bound, including paddles, back buttons and extra buttons. Mouse buttons 4 and 5 go in the keyboard column. Buttons remapped by Steam Input or another remapper work as whatever they send."
 msgstr "Se puede asignar cualquier botón que informe tu mando, incluidas palancas traseras, botones traseros y botones extra. Los botones 4 y 5 del ratón van en la columna del teclado. Los botones reasignados con Steam Input u otra herramienta funcionan como lo que envíen."
 
-#: src/options/options_panel.cpp:256
+#: src/options/options_panel.cpp:255
 msgid "GBA button"
 msgstr "Botón de GBA"
 
-#: src/options/options_panel.cpp:281
+#: src/options/options_panel.cpp:280
 msgid "Extra controls"
 msgstr "Controles extra"
 
-#: src/options/options_panel.cpp:282
+#: src/options/options_panel.cpp:281
 msgid "Optional buttons for things the GBA does with held buttons. They start unbound, and are a good use for paddles, back buttons and other extras."
 msgstr "Botones opcionales para lo que la GBA hace manteniendo botones. Empiezan sin asignar y vienen bien para palancas traseras, botones traseros y otros extras."
 
-#: src/options/options_panel.cpp:284
+#: src/options/options_panel.cpp:283
 msgid "How they work"
 msgstr "Cómo funcionan"
 
-#: src/options/options_panel.cpp:285
+#: src/options/options_panel.cpp:284
 msgid "Missile toggle: press once to arm missiles and again to go back to the beam, instead of holding R. In morph ball it arms power bombs, like holding R.\n\nAim diagonally up / down: hold to aim, instead of holding L (and L + Down)."
 msgstr "Alternar misiles: pulsa una vez para armar misiles y otra para volver al rayo, en lugar de mantener R. En Morfosfera arma las bombas de energía, como mantener R.\n\nApuntar en diagonal arriba / abajo: mantén para apuntar, en lugar de mantener L (y L + Abajo)."
 
-#: src/options/options_panel.cpp:289
+#: src/options/options_panel.cpp:288
 msgid "Action"
 msgstr "Acción"
 
-#: src/options/options_panel.cpp:312
+#: src/options/options_panel.cpp:311
 msgid "Right stick aims diagonally"
 msgstr "El stick derecho apunta en diagonal"
 
-#: src/options/options_panel.cpp:316
+#: src/options/options_panel.cpp:315
 msgid "Push the right stick up or down to aim diagonally up or down. Leave it off if you bound the right stick to GBA buttons."
 msgstr "Mueve el stick derecho arriba o abajo para apuntar en diagonal arriba o abajo. Déjalo desactivado si asignaste el stick derecho a botones de GBA."
 
-#: src/options/options_panel.cpp:321
-msgid "Hold Down to morph"
-msgstr "Mantener Abajo para transformarse"
-
-#: src/options/options_panel.cpp:322
-msgid "Keep holding Down after Samus crouches and she rolls into the Morph Ball, with no second press. Only works on the ground once you have the Morph Ball, and not while aiming diagonally."
-msgstr "Sigue manteniendo Abajo después de que Samus se agache y se convertirá en Morfosfera, sin pulsar otra vez. Solo funciona en el suelo cuando ya tienes la Morfosfera, y no al apuntar en diagonal."
-
-#: src/options/options_panel.cpp:328
-msgid "Hold time"
-msgstr "Tiempo de pulsación"
-
-#: src/options/options_panel.cpp:336
+#: src/options/options_panel.cpp:320
 msgid "Turbo"
 msgstr "Turbo"
 
-#: src/options/options_panel.cpp:340
+#: src/options/options_panel.cpp:324
 msgid "Turbo buttons"
 msgstr "Botones turbo"
 
-#: src/options/options_panel.cpp:344
+#: src/options/options_panel.cpp:328
 msgid "While you hold a turbo button, the game sees it pressed over and over. Handy for rapid fire, but turn it off for a button you need to hold, such as B to inhale."
 msgstr "Mientras mantienes un botón turbo, el juego lo ve pulsado una y otra vez. Útil para disparo rápido, pero desactívalo en botones que debas mantener, como B para inhalar."
 
-#: src/options/options_panel.cpp:350
+#: src/options/options_panel.cpp:334
 msgid "Turbo rate"
 msgstr "Velocidad del turbo"
 
-#: src/options/options_panel.cpp:351
+#: src/options/options_panel.cpp:335
 msgid "%d press per second"
 msgstr "%d pulsación por segundo"
 
-#: src/options/options_panel.cpp:351
+#: src/options/options_panel.cpp:335
 msgid "%d presses per second"
 msgstr "%d pulsaciones por segundo"
 
-#: src/options/options_panel.cpp:357
+#: src/options/options_panel.cpp:341
 msgid "Turbo on:"
 msgstr "Turbo en:"
 
-#: src/options/options_panel.cpp:380
+#: src/options/options_panel.cpp:364
 msgid "Shortcuts"
 msgstr "Atajos"
 
-#: src/options/options_panel.cpp:381
+#: src/options/options_panel.cpp:365
 msgid "For a controller shortcut, hold the buttons together (up to two) and let go. F1, F11 and Esc are kept for the menu and fullscreen."
 msgstr "Para un atajo de mando, mantén los botones a la vez (hasta dos) y suéltalos. F1, F11 y Esc se reservan para el menú y la pantalla completa."
 
-#: src/options/options_panel.cpp:409
+#: src/options/options_panel.cpp:393
 msgid "Rebind all"
 msgstr "Reasignar todo"
 
-#: src/options/options_panel.cpp:411
+#: src/options/options_panel.cpp:395
 msgid "Reset to defaults"
 msgstr "Restablecer"
 
-#: src/options/options_panel.cpp:419
+#: src/options/options_panel.cpp:403
 msgid "Stick dead zone"
 msgstr "Zona muerta del stick"
 
-#: src/options/options_panel.cpp:423
+#: src/options/options_panel.cpp:407
 msgid "How far a stick or trigger must move before it counts as a press."
 msgstr "Cuánto debe moverse un stick o gatillo antes de contar como pulsación."
 
-#: src/options/options_panel.cpp:480
+#: src/options/options_panel.cpp:464
 msgid "Your game file, how it starts, and shortcuts."
 msgstr "Tu archivo de juego, cómo se inicia y los accesos directos."
 
-#: src/options/options_panel.cpp:481
+#: src/options/options_panel.cpp:465
 msgid "How the game is drawn on your screen."
 msgstr "Cómo se dibuja el juego en tu pantalla."
 
-#: src/options/options_panel.cpp:482
+#: src/options/options_panel.cpp:466
 msgid "Keyboard and controller buttons, turbo and shortcuts."
 msgstr "Teclas y botones del mando, turbo y atajos."
 
-#: src/options/options_panel.cpp:483
+#: src/options/options_panel.cpp:467
 msgid "Save states: save and load anywhere."
 msgstr "Estados guardados: guarda y carga en cualquier momento."
 
-#: src/options/options_panel.cpp:484
+#: src/options/options_panel.cpp:468
 msgid "Optional changes to the game."
 msgstr "Cambios opcionales en el juego."
 
-#: src/options/options_panel.cpp:485
+#: src/options/options_panel.cpp:469
 msgid "RetroAchievements sign-in and progress."
 msgstr "Sesión y progreso de RetroAchievements."
 
-#: src/options/options_panel.cpp:486
+#: src/options/options_panel.cpp:470
 msgid "Your version and new releases."
 msgstr "Tu versión y las nuevas versiones."
 
-#: src/options/options_panel.cpp:487
+#: src/options/options_panel.cpp:471
 msgid "Version, credits and licenses."
 msgstr "Versión, créditos y licencias."
 
-#: src/options/options_panel.cpp:494
+#: src/options/options_panel.cpp:478
 msgid "Game Settings"
 msgstr "Ajustes del juego"
 
-#: src/options/options_panel.cpp:495
+#: src/options/options_panel.cpp:479
 msgid "Display Settings"
 msgstr "Ajustes de pantalla"
 
-#: src/options/options_panel.cpp:496
+#: src/options/options_panel.cpp:480
 msgid "Controls Settings"
 msgstr "Ajustes de controles"
 
-#: src/options/options_panel.cpp:497
+#: src/options/options_panel.cpp:481
 msgid "States Settings"
 msgstr "Estados guardados"
 
-#: src/options/options_panel.cpp:498
+#: src/options/options_panel.cpp:482
 msgid "Cheats/Mods Settings"
 msgstr "Trucos y mods"
 
-#: src/options/options_panel.cpp:499
+#: src/options/options_panel.cpp:483
 msgid "Cheats Settings"
 msgstr "Trucos"
 
-#: src/options/options_panel.cpp:500
+#: src/options/options_panel.cpp:484
 msgid "Achievements Settings"
 msgstr "Logros"
 
-#: src/options/options_panel.cpp:501
+#: src/options/options_panel.cpp:485
 msgid "Updates Settings"
 msgstr "Actualizaciones"
 
-#: src/options/options_panel.cpp:502
+#: src/options/options_panel.cpp:486
 msgid "About Settings"
 msgstr "Acerca de"
 
-#: src/options/options_panel.cpp:503
+#: src/options/options_panel.cpp:487
 msgid "{0} Settings"
 msgstr "Ajustes: {0}"
 
-#: src/options/options_panel.cpp:514
+#: src/options/options_panel.cpp:498
 msgid "Display"
 msgstr "Pantalla"
 
-#: src/options/options_panel.cpp:515
+#: src/options/options_panel.cpp:499
 msgid "Controls"
 msgstr "Controles"
 
-#: src/options/options_panel.cpp:764
+#: src/options/options_panel.cpp:748
 msgid "Resume game"
 msgstr "Reanudar partida"
 
-#: src/options/options_panel.cpp:765
+#: src/options/options_panel.cpp:749
 msgid "Close"
 msgstr "Cerrar"
 
-#: src/options/options_panel.cpp:785
+#: src/options/options_panel.cpp:769
 msgid "Quit to launcher"
 msgstr "Volver al lanzador"
 
-#: src/options/options_panel.cpp:793
+#: src/options/options_panel.cpp:777
 msgid "F1 or Esc closes this menu"
 msgstr "F1 o Esc cierra este menú"
 
