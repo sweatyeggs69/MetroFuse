@@ -38,9 +38,32 @@ else()
     target_compile_options(metrofuse_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# Translations of the launcher and menu text (src/app/i18n.h). Each assets/lang/<code>.po is
+# compiled in; tools/i18n.py checks them against the code. No SDL.
+set(metrofuse_lang_cpp "")
+foreach(pair "fr;fr" "de;de" "es;es" "it;it" "pt_br;pt-BR")
+    list(GET pair 0 name)
+    list(GET pair 1 file)
+    set(out "${CMAKE_CURRENT_BINARY_DIR}/lang_${name}.cpp")
+    add_custom_command(OUTPUT "${out}"
+        COMMAND "${CMAKE_COMMAND}" -DINPUT=${PROJECT_SOURCE_DIR}/assets/lang/${file}.po
+                -DOUTPUT=${out} -DSYMBOL=metrofuse_lang_${name} -P ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
+        DEPENDS assets/lang/${file}.po cmake/embed.cmake
+        COMMENT "Embedding ${file}.po")
+    list(APPEND metrofuse_lang_cpp "${out}")
+endforeach()
+add_library(metrofuse_i18n STATIC src/app/i18n.cpp ${metrofuse_lang_cpp})
+target_include_directories(metrofuse_i18n PUBLIC src)
+if(MSVC)
+    target_compile_options(metrofuse_i18n PRIVATE /W4)
+else()
+    target_compile_options(metrofuse_i18n PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 # Save import/export and backups (no SDL).
 add_library(metrofuse_saves STATIC src/app/save_import.cpp src/app/fsutil.cpp)
 target_include_directories(metrofuse_saves PUBLIC src)
+target_link_libraries(metrofuse_saves PUBLIC metrofuse_i18n)
 if(WIN32)
     target_link_libraries(metrofuse_saves PUBLIC shell32 ole32 uuid)
 endif()
@@ -176,7 +199,7 @@ if(TARGET SDL3::SDL3)
         src/app/config.cpp
     )
     target_include_directories(metrofuse_app PUBLIC src)
-    target_link_libraries(metrofuse_app PUBLIC SDL3::SDL3)
+    target_link_libraries(metrofuse_app PUBLIC metrofuse_i18n SDL3::SDL3)
 
     # Launcher: first-run ROM setup, themed menu, shortcuts, game session. The DM Sans font
     # (SIL OFL) and a few Lucide icons (ISC), both in assets/fonts, are compiled in.
@@ -338,6 +361,10 @@ if(METROFUSE_BUILD_TESTS)
     target_link_libraries(metrofuse_states_test PRIVATE metrofuse_states)
     add_test(NAME save_state_slots COMMAND metrofuse_states_test)
     add_executable(metrofuse_cheats_test tests/cheats_test.cpp)
+    add_executable(metrofuse_i18n_test tests/i18n_test.cpp)
+    target_link_libraries(metrofuse_i18n_test PRIVATE metrofuse_i18n)
+    target_compile_definitions(metrofuse_i18n_test PRIVATE METROFUSE_LANG_DIR="${PROJECT_SOURCE_DIR}/assets/lang")
+    add_test(NAME translations COMMAND metrofuse_i18n_test)
     target_include_directories(metrofuse_cheats_test PRIVATE src)
     add_test(NAME cheats COMMAND metrofuse_cheats_test)
     add_executable(metrofuse_auto_morph_test tests/auto_morph_test.cpp)

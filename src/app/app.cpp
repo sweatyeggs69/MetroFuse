@@ -24,6 +24,7 @@
 #include "app/auto_morph.h"
 #include "app/config.h"
 #include "app/fsutil.h"
+#include "app/i18n.h"
 #include "app/platform.h"
 #include "app/redux.h"
 #include "app/save_import.h"
@@ -46,6 +47,8 @@ extern const unsigned metrofuse_image_logo_size;
 
 namespace metrofuse {
 namespace fs = std::filesystem;
+using i18n::tr;
+using i18n::trf;
 
 namespace {
 
@@ -94,6 +97,7 @@ private:
     void draw_ui();
     void draw_first_run();
     void draw_launcher();
+    void draw_language_picker(float x);
     void draw_game_tab(Config& config);
     void draw_save_section();
     void draw_shortcut_controls(bool big);
@@ -206,7 +210,28 @@ private:
 
 // ---- setup ---------------------------------------------------------------------------------
 
+// The launcher and menu language: the one picked on the launcher, else the system's.
+static void init_language(Config& config) {
+    std::string code = config.get_string("ui.language");
+    if (code.empty()) {
+        std::vector<std::string> preferred;
+        int n = 0;
+        if (SDL_Locale** locales = SDL_GetPreferredLocales(&n)) {
+            for (int i = 0; i < n; ++i) {
+                if (!locales[i] || !locales[i]->language) continue;
+                std::string l = locales[i]->language;
+                if (locales[i]->country) l += std::string("-") + locales[i]->country;
+                preferred.push_back(l);
+            }
+            SDL_free(locales);
+        }
+        code = i18n::match_locale(preferred);
+    }
+    i18n::set_language(code);
+}
+
 bool App::init_window() {
+    init_language(config_);
     window_ = SDL_CreateWindow("MetroFuse", opt_.window_w > 0 ? opt_.window_w : 960,
                                opt_.window_h > 0 ? opt_.window_h : 640,
                                SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN);
@@ -240,9 +265,9 @@ bool App::init_window() {
     controls_ = std::make_unique<input::Manager>(settings_io(config_));
     achievements_ = std::make_unique<Achievements>(config_, renderer_);
     updater_ = std::make_unique<update::Updater>(METROFUSE_VERSION);
-    register_options_tab("Game", [this](Config& c) { draw_game_tab(c); }, /*before_builtin=*/true);
-    register_options_tab("States", [this](Config&) { draw_states_tab(); });
-    register_options_tab("Cheats/Mods", [this](Config& c) { draw_cheats_tab(c); });
+    register_options_tab(N_("Game"), [this](Config& c) { draw_game_tab(c); }, /*before_builtin=*/true);
+    register_options_tab(N_("States"), [this](Config&) { draw_states_tab(); });
+    register_options_tab(N_("Cheats/Mods"), [this](Config& c) { draw_cheats_tab(c); });
     achievements_->set_restart_handler([this] {
         if (!game_) return;
         game_->flush_save();
@@ -250,7 +275,7 @@ bool App::init_window() {
         game_ = make_gba(true);
         presenter_->reset_history();
     });
-    register_options_tab("Achievements", [this](Config&) { achievements_->draw_tab(); });
+    register_options_tab(N_("Achievements"), [this](Config&) { achievements_->draw_tab(); });
     // Shortcuts and the save on quit use the current slot, Slot 1 until the player picks another.
     // (0 was the Auto slot, removed in favor of Slot 1.)
     slot_ = config_.get_int("states.current_slot", states::kDefaultSlot);
@@ -264,17 +289,17 @@ bool App::init_window() {
                              config_.set_int("states.current_slot", slot_);
                              ensure_store();
                              const states::SlotInfo& i = store_ ? store_->info(slot_) : states::SlotInfo{};
-                             show_toast("Save state slot: " + states::slot_name(slot_) + (i.exists ? "" : " (empty)"),
+                             show_toast(i.exists ? trf("Save state slot: {0}", states::slot_name(slot_)) : trf("Save state slot: {0} (empty)", states::slot_name(slot_)),
                                         i.exists ? slot_ : -1, toast::Style::Info);
                          },
                          [this] { if (game_ && screen_ == Screen::Game) save_new_slot(); }});
-    register_options_tab("Updates", [this](Config& c) { update_ui::draw_tab(*updater_, c); });
-    register_options_tab("About", [](Config&) {
+    register_options_tab(N_("Updates"), [this](Config& c) { update_ui::draw_tab(*updater_, c); });
+    register_options_tab(N_("About"), [](Config&) {
         const auto& c = theme::palette();
         ImGui::TextUnformatted("MetroFuse " METROFUSE_VERSION);
         ImGui::PushFont(theme::font_small());
-        ImGui::TextColored(c.ink_muted, "An unofficial project. Not affiliated with Nintendo.");
-        ImGui::TextColored(c.ink_muted, "https://github.com/sweatyeggs69/MetroFuse");
+        ImGui::TextColored(c.ink_muted, "%s", tr("An unofficial project. Not affiliated with Nintendo."));
+        ImGui::TextColored(c.ink_muted, "%s", tr("https://github.com/sweatyeggs69/MetroFuse"));
         ImGui::PopFont();
         auto block = [](const char* title, std::string_view text) {
             if (!ImGui::CollapsingHeader(title)) return;
@@ -286,9 +311,9 @@ bool App::init_window() {
             ImGui::EndChild();
             ImGui::PopFont();
         };
-        block("MetroFuse license (MIT)", licenses::metrofuse());
-        block("Third-party notices", licenses::notices());
-        block("DM Sans font license (SIL OFL 1.1)", licenses::font_ofl());
+        block(tr("MetroFuse license (MIT)"), licenses::metrofuse());
+        block(tr("Third-party notices"), licenses::notices());
+        block(tr("DM Sans font license (SIL OFL 1.1)"), licenses::font_ofl());
     });
     update_ui::set_restart_handler([this] { running_ = false; });  // relaunched after shutdown()
     // No network in scripted test runs, unless a test feed is set.
@@ -325,7 +350,7 @@ void App::load_configured_rom() {
     if (v.ok && v.rom.sha1 == config_.get_string("rom.sha1", v.rom.sha1)) {
         rom_ = std::move(v);
     } else {
-        rom_error_ = v.ok ? "The saved ROM changed since it was chosen. Please choose it again." : v.error;
+        rom_error_ = v.ok ? tr("The saved ROM changed since it was chosen. Please choose it again.") : v.error;
     }
 }
 
@@ -346,7 +371,9 @@ void App::accept_rom(const fs::path& path) {
 }
 
 void App::open_rom_dialog() {
-    static const SDL_DialogFileFilter filters[] = {{"Game Boy Advance ROM", "gba"}, {"All files", "*"}};
+    static SDL_DialogFileFilter filters[2];  // static: SDL reads it after this returns
+    filters[0] = {tr("Game Boy Advance ROM"), "gba"};
+    filters[1] = {tr("All files"), "*"};
     std::string start = rom_.ok ? rom_.path.parent_path().string() : std::string();
     SDL_ShowOpenFileDialog(
         [](void* self, const char* const* files, int) {
@@ -359,7 +386,9 @@ void App::open_rom_dialog() {
 }
 
 void App::open_bios_dialog() {
-    static const SDL_DialogFileFilter filters[] = {{"GBA BIOS", "bin;rom"}, {"All files", "*"}};
+    static SDL_DialogFileFilter filters[2];  // static: SDL reads it after this returns
+    filters[0] = {"GBA BIOS", "bin;rom"};
+    filters[1] = {tr("All files"), "*"};
     SDL_ShowOpenFileDialog(
         [](void* self, const char* const* files, int) {
             auto* app = static_cast<App*>(self);
@@ -376,7 +405,7 @@ std::optional<std::vector<std::uint8_t>> App::load_bios(std::string* error) {
     std::vector<std::uint8_t> bios((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     std::string hash = to_hex(sha1(bios.data(), bios.size()));
     if (bios.size() != 0x4000 || hash != kRetailBiosSha1) {
-        if (error) *error = "The BIOS file is not the retail GBA BIOS; using the built-in BIOS.";
+        if (error) *error = tr("The BIOS file is not the retail GBA BIOS; using the built-in BIOS.");
         return std::nullopt;
     }
     return bios;
@@ -415,7 +444,7 @@ void App::start_game() {
     if (audio_) SDL_ClearAudioStream(audio_);
     presenter_->reload();
     controls_->reload();
-    presenter_->show_message("F1 or Esc: settings menu", 3.0);
+    presenter_->show_message(tr("F1 or Esc: settings menu"), 3.0);
     set_options_menu_quit_handler([this] { return_to_launcher(); });
 }
 
@@ -627,20 +656,19 @@ void App::draw_first_run() {
     ImVec2 ds = ImGui::GetIO().DisplaySize;
     begin_card("##firstrun", ImVec2(std::min(560.0f, ds.x - 40), 0));
     draw_card_logo();
-    theme::centered_text((std::string(game::kTitle) + ", native on your computer").c_str(), theme::font_small(), c.ink_muted);
+    theme::centered_text(trf("{0}, native on your computer", game::kTitle).c_str(), theme::font_small(), c.ink_muted);
     ImGui::Dummy(ImVec2(0, 8));
     ImGui::PushTextWrapPos(0);
-    ImGui::TextWrapped(
-        "To play, choose your own copy of the game: a ROM file dumped from your cartridge of %s.",
-        game::kTitleWithRegion);
+    ImGui::TextWrapped("%s", trf("To play, choose your own copy of the game: a ROM file dumped from your cartridge of {0}.",
+                                 game::kTitleWithRegion).c_str());
     ImGui::PushFont(theme::font_small());
-    ImGui::TextColored(c.ink_muted, "MetroFuse only remembers where the file is. It never copies, uploads or changes it.");
+    ImGui::TextColored(c.ink_muted, "%s", tr("MetroFuse only remembers where the file is. It never copies, uploads or changes it."));
     ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Dummy(ImVec2(0, 8));
     float bw = ImGui::GetContentRegionAvail().x;
     bool back = ImGui::IsKeyPressed(ImGuiKey_Backspace, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false);
-    if (theme::button("Choose ROM...", ImVec2(bw, 50), theme::ButtonKind::Primary, METROFUSE_ICON_FOLDER_OPEN))
+    if (theme::button(tr("Choose ROM..."), ImVec2(bw, 50), theme::ButtonKind::Primary, METROFUSE_ICON_FOLDER_OPEN))
         open_rom_dialog();
     if (ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
     if (!rom_error_.empty()) {
@@ -649,7 +677,7 @@ void App::draw_first_run() {
         ImGui::PopTextWrapPos();
     }
     if (back) ImGui::SetKeyboardFocusHere();
-    if (theme::button("Quit", ImVec2(bw, 44), theme::ButtonKind::Outline, METROFUSE_ICON_LOG_OUT)) running_ = false;
+    if (theme::button(tr("Quit"), ImVec2(bw, 44), theme::ButtonKind::Outline, METROFUSE_ICON_LOG_OUT)) running_ = false;
     end_card();
 }
 
@@ -657,13 +685,12 @@ namespace {
 std::string time_ago(std::time_t t) {
     const std::time_t now = std::time(nullptr);
     const long long d = t > 0 && now > t ? (long long)(now - t) : 0;
-    auto unit = [](long long n, const char* one) {
-        return std::to_string(n) + " " + one + (n == 1 ? "" : "s") + " ago";
-    };
-    if (d < 60) return "just now";
-    if (d < 3600) return unit(d / 60, "minute");
-    if (d < 86400) return unit(d / 3600, "hour");
-    return unit(d / 86400, "day");
+    // One and many are separate texts, so each language words both its own way.
+    auto unit = [](long long n, const char* one, const char* many) { return n == 1 ? std::string(tr(one)) : trf(many, n); };
+    if (d < 60) return tr("just now");
+    if (d < 3600) return unit(d / 60, N_("1 minute ago"), N_("{0} minutes ago"));
+    if (d < 86400) return unit(d / 3600, N_("1 hour ago"), N_("{0} hours ago"));
+    return unit(d / 86400, N_("1 day ago"), N_("{0} days ago"));
 }
 }  // namespace
 
@@ -688,28 +715,28 @@ void App::draw_launcher() {
     const states::SlotInfo* latest_info = latest > 0 ? &store_->info(latest) : nullptr;
     bool has_latest = latest_info != nullptr;
     if (game_ && game_paused_) {
-        if (theme::button("Resume", ImVec2(bw, 50), ButtonKind::Primary, METROFUSE_ICON_PLAY)) start_game();
+        if (theme::button(tr("Resume"), ImVec2(bw, 50), ButtonKind::Primary, METROFUSE_ICON_PLAY)) start_game();
         if (focus_main) ImGui::SetItemDefaultFocus();
-        if (theme::button("Restart", ImVec2(bw, 44), ButtonKind::Outline, METROFUSE_ICON_RESTART)) {
+        if (theme::button(tr("Restart"), ImVec2(bw, 44), ButtonKind::Outline, METROFUSE_ICON_RESTART)) {
             game_->flush_save();
             game_.reset();
             start_game();
         }
     } else if (has_latest) {
-        if (theme::button("Continue", ImVec2(bw, 50), ButtonKind::Primary, METROFUSE_ICON_PLAY))
+        if (theme::button(tr("Continue"), ImVec2(bw, 50), ButtonKind::Primary, METROFUSE_ICON_PLAY))
             load_slot(latest);
         if (focus_main) ImGui::SetItemDefaultFocus();
-        if (theme::button("Play from the title screen", ImVec2(bw, 44), ButtonKind::Outline, METROFUSE_ICON_RESTART))
+        if (theme::button(tr("Play from the title screen"), ImVec2(bw, 44), ButtonKind::Outline, METROFUSE_ICON_RESTART))
             start_game();
     } else {
-        if (theme::button("Play", ImVec2(bw, 50), ButtonKind::Primary, METROFUSE_ICON_PLAY)) start_game();
+        if (theme::button(tr("Play"), ImVec2(bw, 50), ButtonKind::Primary, METROFUSE_ICON_PLAY)) start_game();
         if (focus_main) ImGui::SetItemDefaultFocus();
     }
     // Shortcuts are created from Settings > Game.
-    if (theme::button("Settings", ImVec2(half, 44), ButtonKind::Outline, METROFUSE_ICON_SETTINGS)) set_menu_open(true);
+    if (theme::button(tr("Settings"), ImVec2(half, 44), ButtonKind::Outline, METROFUSE_ICON_SETTINGS)) set_menu_open(true);
     ImGui::SameLine();
     if (back) ImGui::SetKeyboardFocusHere();
-    if (theme::button("Quit", ImVec2(half, 44), ButtonKind::Outline, METROFUSE_ICON_LOG_OUT)) running_ = false;
+    if (theme::button(tr("Quit"), ImVec2(half, 44), ButtonKind::Outline, METROFUSE_ICON_LOG_OUT)) running_ = false;
 
     // Status lines only; the Settings button already says where settings live.
     const bool show_info = !info_.empty() && ImGui::GetTime() < info_until_;
@@ -736,11 +763,22 @@ void App::draw_launcher() {
         const float lh = ImGui::GetTextLineHeight();
         dl->AddCircleFilled(ImVec2(q.x + 3, q.y + lh * 0.5f), 3.0f, theme::u32(c.good), 12);
         const ImU32 faint = theme::u32(c.ink_faint);
-        dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(q.x + 12, q.y), faint, "ROM verified");
+        dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(q.x + 12, q.y), faint, tr("ROM verified"));
         std::string right = "v" METROFUSE_VERSION;
-        if (has_latest && !(game_ && game_paused_)) right = "Saved " + time_ago(std::time_t(latest_info->saved_at)) + "  ·  " + right;
+        if (has_latest && !(game_ && game_paused_)) right = trf("Saved {0}", time_ago(std::time_t(latest_info->saved_at))) + "  ·  " + right;
         const float rw = ImGui::CalcTextSize(right.c_str()).x;
         dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(q.x + bw - rw, q.y), faint, right.c_str());
+        // The language button sits in the middle of the row, or in the middle of the gap between the
+        // two sides when a long status leaves no room at the centre.
+        const float left_end = q.x + 12 + ImGui::CalcTextSize(tr("ROM verified")).x;
+        const float right_start = q.x + bw - rw;
+        const float lw = ImGui::CalcTextSize(i18n::language_name()).x;
+        float lx = q.x + (bw - lw) * 0.5f;
+        if (lx < left_end + 16 || lx + lw > right_start - 16) lx = (left_end + right_start - lw) * 0.5f;
+        ImGui::PopFont();
+        draw_language_picker(lx);
+        ImGui::PushFont(theme::font_small());
+        ImGui::SetCursorScreenPos(q);
         // The line reserves less than its full height: the card's bottom padding plus the font's
         // descent and line gap left the footer looking further from the edge than the sides.
         ImGui::Dummy(ImVec2(bw, std::max(1.0f, lh - kFooterTrim)));
@@ -748,6 +786,27 @@ void App::draw_launcher() {
     }
 
     end_card();
+}
+
+// The language of the launcher and menus: a small text button in the footer row (its text starts
+// at screen x) that names the current language and opens a list of them, each in its own language.
+void App::draw_language_picker(float x) {
+    if (theme::text_button(i18n::language_name(), theme::font_small(), x)) ImGui::OpenPopup("##language");
+    const ImVec2 at(ImGui::GetItemRectMin().x + ImGui::GetItemRectSize().x * 0.5f, ImGui::GetItemRectMin().y - 6.0f);
+    ImGui::SetNextWindowPos(at, ImGuiCond_Appearing, ImVec2(0.5f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
+    if (ImGui::BeginPopup("##language")) {
+        for (const i18n::Language& l : i18n::languages()) {
+            const bool current = i18n::language() == l.code;
+            if (ImGui::Selectable(l.name, current, 0, ImVec2(ImGui::CalcTextSize("Português (Brasil)").x + 24, 0))) {
+                i18n::set_language(l.code);
+                config_.set_string("ui.language", l.code);
+            }
+            if (current && ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::PopStyleVar();
 }
 
 void App::ensure_store() {
@@ -787,14 +846,15 @@ std::string App::hotkey_hint(bool brief) const {
     auto d = [&](input::Hotkey h) {
         std::string s = controls_ ? controls_->describe(h) : std::string();
         if (brief) s = s.substr(0, s.find(','));
-        return s.empty() ? std::string("unbound") : s;
+        return s.empty() ? std::string(tr("unbound")) : s;
     };
     if (brief)
-        return d(input::Hotkey::SaveState) + " save  " + d(input::Hotkey::SaveNewSlot) + " new  " +
-               d(input::Hotkey::LoadState) + " load  " +
-               d(input::Hotkey::SlotPrev) + "/" + d(input::Hotkey::SlotNext) + " slot";
-    return "save " + d(input::Hotkey::SaveState) + "; save to new slot " + d(input::Hotkey::SaveNewSlot) + "; load " + d(input::Hotkey::LoadState) + "; previous slot " +
-           d(input::Hotkey::SlotPrev) + "; next slot " + d(input::Hotkey::SlotNext);
+        return trf("{0} save  {1} new  {2} load  {3}/{4} slot", d(input::Hotkey::SaveState),
+                   d(input::Hotkey::SaveNewSlot), d(input::Hotkey::LoadState), d(input::Hotkey::SlotPrev),
+                   d(input::Hotkey::SlotNext));
+    return trf("save {0}; save to new slot {1}; load {2}; previous slot {3}; next slot {4}", d(input::Hotkey::SaveState),
+               d(input::Hotkey::SaveNewSlot), d(input::Hotkey::LoadState), d(input::Hotkey::SlotPrev),
+               d(input::Hotkey::SlotNext));
 }
 
 void App::show_toast(const std::string& text, int slot, toast::Style style) {
@@ -823,11 +883,10 @@ bool App::save_slot(int slot) {
     std::string err;
     bool overwrote = store_->info(slot).exists;
     bool ok = store_->save(slot, *game_, &err);
-    if (ok) show_toast(overwrote ? "Slot " + std::to_string(slot) + " overwritten"
-                                 : "State saved to slot " + std::to_string(slot),
+    if (ok) show_toast(overwrote ? trf("Slot {0} overwritten", slot) : trf("State saved to slot {0}", slot),
                        slot);
-    else toast::show("Could not save the state", err, nullptr, 0, 0, 4500, toast::Style::Warning);
-    states_msg_ = ok ? (overwrote ? "Overwrote " : "Saved to ") + states::slot_name(slot) + "." : err;
+    else toast::show(tr("Could not save the state"), err, nullptr, 0, 0, 4500, toast::Style::Warning);
+    states_msg_ = !ok ? err : overwrote ? trf("Overwrote {0}.", states::slot_name(slot)) : trf("Saved to {0}.", states::slot_name(slot));
     states_msg_err_ = !ok;
     return ok;
 }
@@ -840,9 +899,9 @@ bool App::save_new_slot() {
     for (int s = 1; s <= states::kSlots; ++s) used[size_t(s)] = store_->info(s).exists;
     int s = states::next_free_slot(used, slot_);
     if (s < 0) {
-        std::string why = "All " + std::to_string(states::kSlots) + " slots are full. Delete one in the States tab, " +
-                          "or save over the current slot.";
-        toast::show("No empty slot", why, nullptr, 0, 0, 4500, toast::Style::Warning);
+        std::string why = trf("All {0} slots are full. Delete one in the States tab, or save over the current slot.",
+                              states::kSlots);
+        toast::show(tr("No empty slot"), why, nullptr, 0, 0, 4500, toast::Style::Warning);
         states_msg_ = why;
         states_msg_err_ = true;
         return false;
@@ -869,7 +928,7 @@ bool App::load_slot(int slot) {
     }
     const states::SlotInfo& info = store_->info(slot);
     if (!info.exists || !info.error.empty()) {
-        std::string why = info.exists ? info.error : states::slot_name(slot) + " is empty.";
+        std::string why = info.exists ? info.error : trf("{0} is empty.", states::slot_name(slot));
         show_toast(why, -1, toast::Style::Warning);
         states_msg_ = why;
         states_msg_err_ = true;
@@ -880,7 +939,7 @@ bool App::load_slot(int slot) {
     std::string err;
     if (!store_->load(slot, *game_, &err)) {
         if (created) game_.reset();
-        toast::show("Could not load the state", err, nullptr, 0, 0, 4500, toast::Style::Warning);
+        toast::show(tr("Could not load the state"), err, nullptr, 0, 0, 4500, toast::Style::Warning);
         states_msg_ = err;
         states_msg_err_ = true;
         return false;
@@ -888,8 +947,8 @@ bool App::load_slot(int slot) {
     start_game();
     presenter_->reset_history();
     if (achievements_) achievements_->state_loaded();
-    show_toast("State loaded from slot " + std::to_string(slot), slot);
-    states_msg_ = "Loaded " + states::slot_name(slot) + ".";
+    show_toast(trf("State loaded from slot {0}", slot), slot);
+    states_msg_ = trf("Loaded {0}.", states::slot_name(slot));
     states_msg_err_ = false;
     return true;
 }
@@ -915,7 +974,7 @@ void App::startup() {
         }
         exists = exists || usable;
     } else {
-        why = rom_error_.empty() ? "No ROM is chosen yet." : rom_error_;
+        why = rom_error_.empty() ? std::string(tr("No ROM is chosen yet.")) : rom_error_;
     }
     switch (states::choose_startup(rom_.ok, opt_.play, autoload, exists, usable, shift)) {
         case states::Startup::Resume:
@@ -930,7 +989,7 @@ void App::startup() {
         case states::Startup::Launcher:
             return;
     }
-    toast::show(autoload ? "Couldn't auto-load the save state" : "Couldn't start the game", why, nullptr, 0, 0,
+    toast::show(autoload ? tr("Couldn't auto-load the save state") : tr("Couldn't start the game"), why, nullptr, 0, 0,
                 6000, toast::Style::Warning);
 }
 
@@ -947,32 +1006,32 @@ void App::draw_states_tab() {
     const auto& c = theme::palette();
     ensure_store();
     if (!store_) {
-        ImGui::TextUnformatted("Choose your ROM first (Game tab).");
+        ImGui::TextUnformatted(tr("Choose your ROM first (Game tab)."));
         return;
     }
-    ImGui::TextWrapped("Shortcuts in game: %s. Current: %s. Change them in Controls.", hotkey_hint(true).c_str(),
-                       states::slot_name(slot_).c_str());
+    ImGui::TextWrapped("%s", trf("Shortcuts in game: {0}. Current: {1}. Change them in Controls.", hotkey_hint(true),
+                               states::slot_name(slot_)).c_str());
     ImGui::BeginDisabled(!store_->can_undo_load() || !game_ || (achievements_ && achievements_->hardcore()));
-    if (ImGui::Button("Undo last load")) {
+    if (ImGui::Button(tr("Undo last load"))) {
         std::string err;
         bool ok = store_->undo_load(*game_, &err);
         if (ok) presenter_->reset_history();
         if (ok && achievements_) achievements_->state_loaded();
-        states_msg_ = ok ? "Went back to before the last load." : err;
+        states_msg_ = ok ? tr("Went back to before the last load.") : err;
         states_msg_err_ = !ok;
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (ImGui::Button("Show folder")) SDL_OpenURL(file_url(store_->dir()).c_str());
+    if (ImGui::Button(tr("Show folder"))) SDL_OpenURL(file_url(store_->dir()).c_str());
     ImGui::SameLine();
     ImGui::BeginDisabled(!game_);
-    if (ImGui::Button("Save to new slot")) save_new_slot();
+    if (ImGui::Button(tr("Save to new slot"))) save_new_slot();
     ImGui::EndDisabled();
     {
         int mode = config_.get_string("states.quick_save", "overwrite") == "new" ? 1 : 0;
-        const char* modes[] = {"Overwrite the current slot", "Save to a new slot each time"};
+        const char* modes[] = {tr("Overwrite the current slot"), tr("Save to a new slot each time")};
         ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted("Save state shortcut:");
+        ImGui::TextUnformatted(tr("Save state shortcut:"));
         ImGui::SameLine();
         ImGui::SetNextItemWidth(300);
         if (ImGui::Combo("##quicksave", &mode, modes, 2))
@@ -1017,7 +1076,7 @@ void App::draw_states_tab() {
         } else {
             ImDrawList* dl = ImGui::GetWindowDrawList();
             dl->AddRectFilled(tp, ImVec2(tp.x + thumb_w, tp.y + thumb_h), theme::u32(c.surface), 10);
-            const char* empty = i.exists ? "Unusable" : "Empty";
+            const char* empty = i.exists ? tr("Unusable") : tr("Empty");
             ImVec2 ts = ImGui::CalcTextSize(empty);
             dl->AddText(ImVec2(tp.x + (thumb_w - ts.x) / 2, tp.y + (thumb_h - ts.y) / 2), theme::u32(c.ink_muted), empty);
             ImGui::Dummy(ImVec2(thumb_w, thumb_h));
@@ -1035,10 +1094,11 @@ void App::draw_states_tab() {
         if (usable) {
             char when[64];
             std::tm tm = local_time(i.saved_at);
-            std::strftime(when, sizeof when, "%b %d, %H:%M", &tm);
-            ImGui::TextColored(c.ink_muted, "%s  |  %s played", when, states::format_playtime(i.playtime_frames).c_str());
+            // The date format is translated too (day and month order differs by language).
+            std::strftime(when, sizeof when, tr("%b %d, %H:%M"), &tm);
+            ImGui::TextColored(c.ink_muted, "%s", trf("{0}  |  {1} played", when, states::format_playtime(i.playtime_frames)).c_str());
         } else {
-            ImGui::TextColored(i.exists ? c.bad : c.ink_muted, "%s", i.exists ? i.error.c_str() : "No state saved yet");
+            ImGui::TextColored(i.exists ? c.bad : c.ink_muted, "%s", i.exists ? i.error.c_str() : tr("No state saved yet"));
         }
         ImGui::PopFont();
         // Save and Load share the row; the more menu is a square button on the right.
@@ -1046,11 +1106,11 @@ void App::draw_states_tab() {
         const float bh = kSlotButtonH, bgap = 6.0f;
         const float bw = std::floor((thumb_w - bh - 2 * bgap) / 2);
         ImGui::BeginDisabled(!game_);
-        if (theme::button("Save", ImVec2(bw, bh), theme::ButtonKind::Outline)) save_slot(slot);
+        if (theme::button(tr("Save"), ImVec2(bw, bh), theme::ButtonKind::Outline)) save_slot(slot);
         ImGui::EndDisabled();
         ImGui::SameLine(0, bgap);
         ImGui::BeginDisabled(!usable);
-        if (theme::button("Load", ImVec2(bw, bh), theme::ButtonKind::Primary)) {
+        if (theme::button(tr("Load"), ImVec2(bw, bh), theme::ButtonKind::Primary)) {
             slot_ = slot;
             config_.set_int("states.current_slot", slot_);
             if (load_slot(slot)) set_menu_open(false);  // straight back into the game
@@ -1059,13 +1119,14 @@ void App::draw_states_tab() {
         ImGui::SameLine(0, bgap);
         if (theme::button("...##more", ImVec2(bh, bh), theme::ButtonKind::Outline)) ImGui::OpenPopup("more");
         if (ImGui::BeginPopup("more")) {
-            if (ImGui::MenuItem("Rename...", nullptr, false, usable)) {
+            if (ImGui::MenuItem(tr("Rename..."), nullptr, false, usable)) {
                 rename_slot_ = slot;
                 std::snprintf(rename_buf_, sizeof rename_buf_, "%s", i.label.c_str());
             }
-            if (ImGui::MenuItem("Export...", nullptr, false, i.exists)) {
+            if (ImGui::MenuItem(tr("Export..."), nullptr, false, i.exists)) {
                 file_slot_ = slot;
-                static const SDL_DialogFileFilter f[] = {{"MetroFuse save state", "mfst"}};
+                static SDL_DialogFileFilter f[1];  // static: SDL reads it after this returns
+                f[0] = {tr("MetroFuse save state"), "mfst"};
                 std::string def = (rom_.path.parent_path() / (std::string(game::kFileSafeTitle) + " " + states::slot_name(slot) + ".mfst")).string();
                 SDL_ShowSaveFileDialog(
                     [](void* self, const char* const* files, int) {
@@ -1075,9 +1136,11 @@ void App::draw_states_tab() {
                     },
                     this, window_, f, 1, def.c_str());
             }
-            if (ImGui::MenuItem("Import into this slot...")) {
+            if (ImGui::MenuItem(tr("Import into this slot..."))) {
                 file_slot_ = slot;
-                static const SDL_DialogFileFilter f[] = {{"MetroFuse save state", "mfst"}, {"All files", "*"}};
+                static SDL_DialogFileFilter f[2];  // static: SDL reads it after this returns
+                f[0] = {tr("MetroFuse save state"), "mfst"};
+                f[1] = {tr("All files"), "*"};
                 SDL_ShowOpenFileDialog(
                     [](void* self, const char* const* files, int) {
                         auto* app = static_cast<App*>(self);
@@ -1086,7 +1149,7 @@ void App::draw_states_tab() {
                     },
                     this, window_, f, 2, nullptr, false);
             }
-            if (ImGui::MenuItem("Delete...", nullptr, false, i.exists)) delete_slot_ = slot;
+            if (ImGui::MenuItem(tr("Delete..."), nullptr, false, i.exists)) delete_slot_ = slot;
             ImGui::EndPopup();
         }
         ImGui::EndChild();
@@ -1098,35 +1161,35 @@ void App::draw_states_tab() {
     }
     ImGui::PopStyleVar();  // card gap
 
-    if (rename_slot_ >= 0) { ImGui::OpenPopup("Rename state"); }
-    if (ImGui::BeginPopupModal("Rename state", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Label for %s:", states::slot_name(rename_slot_).c_str());
+    if (rename_slot_ >= 0) { ImGui::OpenPopup(tr("Rename state")); }
+    if (ImGui::BeginPopupModal(tr("Rename state"), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted(trf("Label for {0}:", states::slot_name(rename_slot_)).c_str());
         ImGui::SetNextItemWidth(320);
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         bool enter = ImGui::InputText("##label", rename_buf_, sizeof rename_buf_, ImGuiInputTextFlags_EnterReturnsTrue);
-        if (ImGui::Button("Save") || enter) {
+        if (ImGui::Button(tr("Save")) || enter) {
             std::string err;
             if (!store_->rename(rename_slot_, rename_buf_, &err)) { states_msg_ = err; states_msg_err_ = true; }
             rename_slot_ = -1;
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancel")) { rename_slot_ = -1; ImGui::CloseCurrentPopup(); }
+        if (ImGui::Button(tr("Cancel"))) { rename_slot_ = -1; ImGui::CloseCurrentPopup(); }
         ImGui::EndPopup();
     }
-    if (delete_slot_ >= 0) { ImGui::OpenPopup("Delete state?"); }
-    if (ImGui::BeginPopupModal("Delete state?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Delete %s? It is moved to the Trash.", states::slot_name(delete_slot_).c_str());
-        if (ImGui::Button("Delete")) {
+    if (delete_slot_ >= 0) { ImGui::OpenPopup(tr("Delete state?")); }
+    if (ImGui::BeginPopupModal(tr("Delete state?"), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted(trf("Delete {0}? It is moved to the Trash.", states::slot_name(delete_slot_)).c_str());
+        if (ImGui::Button(tr("Delete"))) {
             std::string err;
             bool ok = store_->remove(delete_slot_, &err);
-            states_msg_ = ok ? states::slot_name(delete_slot_) + " moved to the Trash." : err;
+            states_msg_ = ok ? trf("{0} moved to the Trash.", states::slot_name(delete_slot_)) : err;
             states_msg_err_ = !ok;
             delete_slot_ = -1;
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancel")) { delete_slot_ = -1; ImGui::CloseCurrentPopup(); }
+        if (ImGui::Button(tr("Cancel"))) { delete_slot_ = -1; ImGui::CloseCurrentPopup(); }
         ImGui::EndPopup();
     }
 }
@@ -1141,7 +1204,7 @@ fs::path App::current_save_path() { return rom_.ok ? save_path_for(config_, rom_
 void App::prepare_import(const fs::path& file) {
     std::vector<std::uint8_t> bytes;
     if (!read_file(file, bytes)) {
-        save_message("Could not read " + file.string(), true);
+        save_message(trf("Could not read {0}", file.string()), true);
         return;
     }
     NormalizedSave n = normalize_save(bytes, file.filename().string());
@@ -1160,7 +1223,7 @@ void App::apply_pending_save() {
     if (game_) game_->flush_save();  // so the backup has the latest progress
     fs::path backup = backup_save(save, save.parent_path() / "backups");
     if (!write_file_atomic(save, pending_save_->data)) {
-        save_message("Could not write the save file " + save.string(), true);
+        save_message(trf("Could not write the save file {0}", save.string()), true);
         pending_save_.reset();
         return;
     }
@@ -1170,9 +1233,10 @@ void App::apply_pending_save() {
         game_ = make_gba(true);
         game_paused_ = screen_ != Screen::Game;
     }
-    save_message("Imported " + pending_save_->source + (backup.empty() ? "." : ". The previous save was backed up.") +
-                     (was_playing ? " The game was restarted." : ""),
-                 false);
+    std::string msg = backup.empty() ? trf("Imported {0}.", pending_save_->source)
+                                     : trf("Imported {0}. The previous save was backed up.", pending_save_->source);
+    if (was_playing) msg += std::string(" ") + tr("The game was restarted.");
+    save_message(msg, false);
     pending_save_.reset();
 }
 
@@ -1182,33 +1246,35 @@ void App::export_save(const fs::path& dst) {
     std::vector<std::uint8_t> data;
     std::error_code ec;
     if (save.empty() || !fs::exists(save, ec) || !read_file(save, data)) {
-        save_message("There is no save to export yet. Play the game first.", true);
+        save_message(tr("There is no save to export yet. Play the game first."), true);
         return;
     }
     data.resize(kSramSize, 0xFF);
     fs::path out = dst;
     if (out.extension().empty()) out += ".sav";
     if (!write_file_atomic(out, data)) {
-        save_message("Could not write " + out.string(), true);
+        save_message(trf("Could not write {0}", out.string()), true);
         return;
     }
-    save_message("Exported to " + out.string() + " (raw 32 KiB, works in mGBA, VBA-M and RetroArch).", false);
+    save_message(trf("Exported to {0} (raw 32 KiB, works in mGBA, VBA-M and RetroArch).", out.string()), false);
 }
 
 void App::draw_save_section() {
     const auto& c = theme::palette();
-    theme::section("Saves");
+    theme::section(tr("Saves"));
     fs::path saves = config_.pref_dir() / "saves";
     ImGui::TextWrapped("%s", saves.string().c_str());
-    if (ImGui::Button("Show save folder")) {
+    if (ImGui::Button(tr("Show save folder"))) {
         std::error_code ec;
         fs::create_directories(saves, ec);
         SDL_OpenURL(file_url(saves).c_str());
     }
     ImGui::BeginDisabled(!rom_.ok);
-    same_line_if_fits("Import save...");
-    if (ImGui::Button("Import save...")) {
-        static const SDL_DialogFileFilter filters[] = {{"Game saves", "sav;srm;sa1;dsv"}, {"All files", "*"}};
+    same_line_if_fits(tr("Import save..."));
+    if (ImGui::Button(tr("Import save..."))) {
+        static SDL_DialogFileFilter filters[2];  // static: SDL reads it after this returns
+        filters[0] = {tr("Game saves"), "sav;srm;sa1;dsv"};
+        filters[1] = {tr("All files"), "*"};
         SDL_ShowOpenFileDialog(
             [](void* self, const char* const* files, int) {
                 auto* app = static_cast<App*>(self);
@@ -1217,9 +1283,10 @@ void App::draw_save_section() {
             },
             this, window_, filters, 2, nullptr, false);
     }
-    same_line_if_fits("Export save...");
-    if (ImGui::Button("Export save...")) {
-        static const SDL_DialogFileFilter filters[] = {{"Game save", "sav"}};
+    same_line_if_fits(tr("Export save..."));
+    if (ImGui::Button(tr("Export save..."))) {
+        static SDL_DialogFileFilter filters[1];  // static: SDL reads it after this returns
+        filters[0] = {tr("Game save"), "sav"};
         std::string def = (fs::path(rom_.path).parent_path() / (std::string(game::kFileSafeTitle) + ".sav")).string();
         SDL_ShowSaveFileDialog(
             [](void* self, const char* const* files, int) {
@@ -1229,10 +1296,10 @@ void App::draw_save_section() {
             },
             this, window_, filters, 1, def.c_str());
     }
-    same_line_if_fits("Restore backup...");
-    if (ImGui::Button("Restore backup...")) open_backup_list_ = true;
+    same_line_if_fits(tr("Restore backup..."));
+    if (ImGui::Button(tr("Restore backup..."))) open_backup_list_ = true;
     ImGui::EndDisabled();
-    ImGui::TextDisabled("Imports .sav / .srm battery saves from mGBA, VBA-M, RetroArch and others.");
+    ImGui::TextDisabled("%s", tr("Imports .sav / .srm battery saves from mGBA, VBA-M, RetroArch and others."));
     if (!save_msg_.empty()) {
         ImGui::PushTextWrapPos(0);
         ImGui::TextColored(save_msg_error_ ? c.bad : c.good, "%s", save_msg_.c_str());
@@ -1240,25 +1307,25 @@ void App::draw_save_section() {
     }
 
     if (open_save_confirm_) {
-        ImGui::OpenPopup("Replace your save?");
+        ImGui::OpenPopup(tr("Replace your save?"));
         open_save_confirm_ = false;
     }
-    if (ImGui::BeginPopupModal("Replace your save?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (ImGui::BeginPopupModal(tr("Replace your save?"), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         if (pending_save_) {
-            ImGui::Text("Use %s as your save?", pending_save_->source.c_str());
+            ImGui::TextUnformatted(trf("Use {0} as your save?", pending_save_->source).c_str());
             ImGui::TextDisabled("%s", pending_save_->format.c_str());
-            ImGui::TextUnformatted("Your current save is backed up first (the last 10 are kept).");
+            ImGui::TextUnformatted(tr("Your current save is backed up first (the last 10 are kept)."));
             if (game_)
-                ImGui::TextColored(c.highlight, "Importing restarts the game; unsaved progress is lost.");
+                ImGui::TextColored(c.highlight, "%s", tr("Importing restarts the game; unsaved progress is lost."));
             if (!pending_save_->warning.empty()) ImGui::TextColored(c.highlight, "%s", pending_save_->warning.c_str());
         }
         ImGui::Dummy(ImVec2(0, 4));
-        if (ImGui::Button("Replace save")) {
+        if (ImGui::Button(tr("Replace save"))) {
             apply_pending_save();
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancel")) {
+        if (ImGui::Button(tr("Cancel"))) {
             pending_save_.reset();
             ImGui::CloseCurrentPopup();
         }
@@ -1266,13 +1333,13 @@ void App::draw_save_section() {
     }
 
     if (open_backup_list_) {
-        ImGui::OpenPopup("Restore a backup");
+        ImGui::OpenPopup(tr("Restore a backup"));
         open_backup_list_ = false;
     }
-    if (ImGui::BeginPopupModal("Restore a backup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (ImGui::BeginPopupModal(tr("Restore a backup"), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         fs::path save = current_save_path();
         auto backups = list_backups(save.parent_path() / "backups", save.stem().string());
-        if (backups.empty()) ImGui::TextUnformatted("No backups yet. One is made every time a save is replaced.");
+        if (backups.empty()) ImGui::TextUnformatted(tr("No backups yet. One is made every time a save is replaced."));
         for (const auto& b : backups) {
             // <sha1>-YYYYmmdd-HHMMSS.sav -> "YYYY-mm-dd HH:MM:SS"
             std::string n = b.stem().string();
@@ -1285,13 +1352,13 @@ void App::draw_save_section() {
                 std::vector<std::uint8_t> data;
                 if (read_file(b, data)) {
                     data.resize(kSramSize, 0xFF);
-                    pending_save_ = PendingSave{std::move(data), "the backup from " + label, "backup", ""};
+                    pending_save_ = PendingSave{std::move(data), trf("the backup from {0}", label), tr("backup"), ""};
                     open_save_confirm_ = true;
                 }
                 ImGui::CloseCurrentPopup();
             }
         }
-        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(tr("Cancel"))) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
 }
@@ -1307,41 +1374,41 @@ redux::Flags App::redux_flags() const {
 }
 
 void App::draw_cheats_tab(Config& config) {
-    theme::section("Supplies");
+    theme::section(tr("Supplies"));
     const bool allowed = cheats_allowed();
     ImGui::BeginDisabled(!allowed);
     struct Toggle { const char* label; const char* key; const char* help; };
     static constexpr Toggle kToggles[] = {
-        {"Unlimited health", "cheats.health", "Energy stays full, so damage never drains it."},
-        {"Unlimited missiles", "cheats.missiles", "Missiles refill as fast as you fire them. Does not unlock them early."},
-        {"Unlimited power bombs", "cheats.power_bombs", "Power bombs refill after each one. Does not unlock them early."},
+        {N_("Unlimited health"), "cheats.health", N_("Energy stays full, so damage never drains it.")},
+        {N_("Unlimited missiles"), "cheats.missiles", N_("Missiles refill as fast as you fire them. Does not unlock them early.")},
+        {N_("Unlimited power bombs"), "cheats.power_bombs", N_("Power bombs refill after each one. Does not unlock them early.")},
     };
     for (const Toggle& t : kToggles) {
         bool on = config.get_bool(t.key, false);
-        if (theme::toggle(t.label, &on)) {
+        if (theme::toggle(tr(t.label), &on)) {
             config.set_bool(t.key, on);
         }
         ImGui::PushFont(theme::font_small());
-        ImGui::TextDisabled("%s", t.help);
+        ImGui::TextDisabled("%s", tr(t.help));
         ImGui::PopFont();
     }
     ImGui::EndDisabled();
     ImGui::Dummy(ImVec2(0, 4.0f));
     ImGui::PushFont(theme::font_small());
-    if (!allowed) ImGui::TextDisabled("Cheats and mods are off while RetroAchievements hardcore mode is on.");
-    else ImGui::TextDisabled("Supplies refill up to your current maximum. Cheats stay on until you turn them off.");
+    if (!allowed) ImGui::TextDisabled("%s", tr("Cheats and mods are off while RetroAchievements hardcore mode is on."));
+    else ImGui::TextDisabled("%s", tr("Supplies refill up to your current maximum. Cheats stay on until you turn them off."));
     ImGui::PopFont();
 
     // Redux Mode: one switch for the whole set, with each tweak listed under it. A mixed set shows
     // the switch as partly on, labelled Custom.
     ImGui::Dummy(ImVec2(0, 8.0f));
-    theme::section("Mods");
+    theme::section(tr("Mods"));
     ImGui::BeginDisabled(!allowed);
     {
         bool on = config.get_bool("mods.auto_morph", false);
-        if (theme::toggle("Auto Morph Ball", &on)) config.set_bool("mods.auto_morph", on);
+        if (theme::toggle(tr("Auto Morph Ball"), &on)) config.set_bool("mods.auto_morph", on);
         ImGui::PushFont(theme::font_small());
-        ImGui::TextDisabled("Run into a Morph Ball tunnel and Samus rolls in on her own. Needs the Morph Ball.");
+        ImGui::TextDisabled("%s", tr("Run into a Morph Ball tunnel and Samus rolls in on her own. Needs the Morph Ball."));
         ImGui::PopFont();
     }
     ImGui::EndDisabled();
@@ -1357,7 +1424,7 @@ void App::draw_cheats_tab(Config& config) {
     ImGui::BeginDisabled(!allowed || total == 0);
     bool all = total > 0 && on == total;
     ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, mixed);
-    if (theme::toggle("Redux Mode", &all)) {
+    if (theme::toggle(tr("Redux Mode"), &all)) {
         const bool value = !(on == total);  // all on -> all off; otherwise turn everything on
         for (std::size_t i = 0; i < redux::kTweakCount; ++i)
             if (redux_ok_[i]) config.set_bool(key(redux::kTweaks[i]), value);
@@ -1365,10 +1432,10 @@ void App::draw_cheats_tab(Config& config) {
     ImGui::PopItemFlag();
     if (mixed) {
         ImGui::SameLine();
-        ImGui::TextColored(theme::palette().highlight, "Custom");
+        ImGui::TextColored(theme::palette().highlight, "%s", tr("Custom"));
     }
     ImGui::PushFont(theme::font_small());
-    ImGui::TextDisabled("Quality-of-life tweaks for the original game. Change them any time, even mid-game.");
+    ImGui::TextDisabled("%s", tr("Quality-of-life tweaks for the original game. Change them any time, even mid-game."));
     ImGui::PopFont();
     ImGui::Dummy(ImVec2(0, 2.0f));
     ImGui::Indent();
@@ -1376,9 +1443,9 @@ void App::draw_cheats_tab(Config& config) {
         const redux::Tweak& t = redux::kTweaks[i];
         ImGui::BeginDisabled(!redux_ok_[i]);
         bool v = redux_ok_[i] && config.get_bool(key(t), false);
-        if (theme::toggle(t.label, &v)) config.set_bool(key(t), v);
+        if (theme::toggle(tr(t.label), &v)) config.set_bool(key(t), v);
         ImGui::PushFont(theme::font_small());
-        ImGui::TextDisabled("%s", redux_ok_[i] ? t.help : "Not available for this ROM.");
+        ImGui::TextDisabled("%s", redux_ok_[i] ? tr(t.help) : tr("Not available for this ROM."));
         ImGui::PopFont();
         ImGui::EndDisabled();
     }
@@ -1387,8 +1454,8 @@ void App::draw_cheats_tab(Config& config) {
     ImGui::Dummy(ImVec2(0, 4.0f));
     ImGui::PushFont(theme::font_small());
     ImGui::PushTextWrapPos(0);
-    ImGui::TextDisabled("Inspired by Metroid Fusion Redux by ShadowOne333 and the community hacks it collects. "
-                        "These are MetroFuse's own versions for the USA game; no Redux files are used.");
+    ImGui::TextDisabled("%s", tr("Inspired by Metroid Fusion Redux by ShadowOne333 and the community hacks it collects. "
+                        "These are MetroFuse's own versions for the USA game; no Redux files are used."));
     ImGui::PopTextWrapPos();
     ImGui::PopFont();
 }
@@ -1396,12 +1463,12 @@ void App::draw_cheats_tab(Config& config) {
 void App::draw_game_tab(Config& config) {
     (void)config;
     const auto& c = theme::palette();
-    theme::section("Game ROM");
+    theme::section(tr("Game ROM"));
     if (rom_.ok) {
         if (rom_.rom.header_only)
-            ImGui::TextColored(c.highlight, "%s, header match (fingerprint not pinned yet)", game::kTitleWithRegion);
+            ImGui::TextColored(c.highlight, "%s", trf("{0}, header match (fingerprint not pinned yet)", game::kTitleWithRegion).c_str());
         else
-            ImGui::TextColored(c.good, "%s, verified", game::kTitleWithRegion);
+            ImGui::TextColored(c.good, "%s", trf("{0}, verified", game::kTitleWithRegion).c_str());
         ImGui::PushFont(theme::font_small());
         ImGui::TextColored(c.ink_muted, "%s [%s] rev %u", rom_.rom.header.title.c_str(), rom_.rom.header.game_code.c_str(),
                            unsigned(rom_.rom.header.version));
@@ -1411,61 +1478,61 @@ void App::draw_game_tab(Config& config) {
         ImGui::PopTextWrapPos();
         ImGui::PopFont();
     } else {
-        ImGui::TextColored(c.bad, "No ROM chosen");
+        ImGui::TextColored(c.bad, "%s", tr("No ROM chosen"));
     }
-    if (ImGui::Button("Change ROM...")) open_rom_dialog();
+    if (ImGui::Button(tr("Change ROM..."))) open_rom_dialog();
     if (!rom_error_.empty()) {
         ImGui::PushTextWrapPos(0);
         ImGui::TextColored(c.bad, "%s", rom_error_.c_str());
         ImGui::PopTextWrapPos();
     }
 
-    theme::section("Startup");
+    theme::section(tr("Startup"));
     bool autoload = config_.get_bool("states.autoload", false);
-    if (theme::toggle("Auto-load save state on launch", &autoload)) config_.set_bool("states.autoload", autoload);
-    ImGui::TextDisabled("Opening MetroFuse goes straight back to where you left off (your most recent save state).");
-    ImGui::TextDisabled("Hold Shift while opening MetroFuse to see this menu instead.");
+    if (theme::toggle(tr("Auto-load save state on launch"), &autoload)) config_.set_bool("states.autoload", autoload);
+    ImGui::TextDisabled("%s", tr("Opening MetroFuse goes straight back to where you left off (your most recent save state)."));
+    ImGui::TextDisabled("%s", tr("Hold Shift while opening MetroFuse to see this menu instead."));
 
     draw_save_section();
 
-    theme::section("BIOS (optional)");
+    theme::section(tr("BIOS (optional)"));
     std::string bios = config_.get_string("bios.path");
     if (bios != bios_checked_path_) {  // verify once per change, not every frame
         bios_checked_path_ = bios;
         bios_status_.clear();
         if (!bios.empty() && !load_bios(&bios_status_) && bios_status_.empty())
-            bios_status_ = "The BIOS file could not be read; using the built-in BIOS.";
+            bios_status_ = tr("The BIOS file could not be read; using the built-in BIOS.");
     }
     if (bios.empty()) {
-        ImGui::TextWrapped("Built-in BIOS. No file is needed.");
+        ImGui::TextWrapped("%s", tr("Built-in BIOS. No file is needed."));
     } else {
         ImGui::TextWrapped("%s", bios.c_str());
         if (bios_status_.empty())
-            ImGui::TextColored(c.good, "Retail GBA BIOS verified: the Game Boy logo plays when the game starts, "
-                                       "and the game runs on this BIOS.");
+            ImGui::TextColored(c.good, "%s", tr("Retail GBA BIOS verified: the Game Boy logo plays when the game starts, "
+                                       "and the game runs on this BIOS."));
         else
             ImGui::TextColored(c.bad, "%s", bios_status_.c_str());
     }
-    if (ImGui::Button(bios.empty() ? "Use a BIOS file..." : "Use the built-in BIOS")) {
+    if (ImGui::Button(bios.empty() ? tr("Use a BIOS file...") : tr("Use the built-in BIOS"))) {
         if (bios.empty()) open_bios_dialog();
         else config_.erase("bios.path");
     }
     ImGui::SameLine();
-    ImGui::TextDisabled("Takes effect the next time the game starts.");
+    ImGui::TextDisabled("%s", tr("Takes effect the next time the game starts."));
 
-    theme::section("Shortcut");
-    ImGui::TextWrapped("A shortcut starts the game directly, skipping the launcher.");
+    theme::section(tr("Shortcut"));
+    ImGui::TextWrapped("%s", tr("A shortcut starts the game directly, skipping the launcher."));
     draw_shortcut_controls(false);
 }
 
 void App::draw_shortcut_controls(bool big) {
     const auto& c = theme::palette();
 #if defined(__APPLE__)
-    const char* apps_name = "Applications";
+    const char* apps_name = tr("Applications");
 #elif defined(_WIN32)
-    const char* apps_name = "Start menu";
+    const char* apps_name = tr("Start menu");
 #else
-    const char* apps_name = "applications menu";
+    const char* apps_name = tr("applications menu");
 #endif
     auto report = [&](const ShortcutResult& r) {
         info_ = r.message;
@@ -1476,10 +1543,9 @@ void App::draw_shortcut_controls(bool big) {
     };
     for (ShortcutPlace place : {ShortcutPlace::Applications, ShortcutPlace::Desktop}) {
         ImGui::PushID(int(place));
-        std::string where = place == ShortcutPlace::Desktop ? "Desktop" : apps_name;
+        std::string where = place == ShortcutPlace::Desktop ? tr("Desktop") : apps_name;
         ShortcutState st = shortcut_state(place);
-        std::string label = (st == ShortcutState::Ours ? "Update " : "Add to ") + where;
-        if (st == ShortcutState::Ours) label = "Update " + where + " shortcut";
+        std::string label = st == ShortcutState::Ours ? trf("Update {0} shortcut", where) : trf("Add to {0}", where);
         // In the popup the buttons fill the row; Remove sits at the end of it.
         const float row = ImGui::GetContentRegionAvail().x, remove_w = 110.0f;
         const float main_w = st == ShortcutState::Ours ? row - remove_w - ImGui::GetStyle().ItemSpacing.x : row;
@@ -1490,7 +1556,7 @@ void App::draw_shortcut_controls(bool big) {
         }
         if (st == ShortcutState::Ours) {
             ImGui::SameLine();
-            bool remove = big ? theme::big_button("Remove", ImVec2(remove_w, 46), false) : ImGui::Button("Remove shortcut");
+            bool remove = big ? theme::big_button(tr("Remove"), ImVec2(remove_w, 46), false) : ImGui::Button(tr("Remove shortcut"));
             if (remove) report(remove_shortcut(place));
         }
         ImGui::PopID();
@@ -1501,20 +1567,20 @@ void App::draw_shortcut_controls(bool big) {
         ImGui::PopTextWrapPos();
     }
     if (confirm_shortcut_) {
-        ImGui::OpenPopup("Replace existing item?");
+        ImGui::OpenPopup(tr("Replace existing item?"));
         confirm_shortcut_ = false;
     }
-    if (ImGui::BeginPopupModal("Replace existing item?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (ImGui::BeginPopupModal(tr("Replace existing item?"), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("%s", shortcut_path(pending_shortcut_place_).string().c_str());
-        ImGui::TextUnformatted("already exists and was not made by MetroFuse.");
-        ImGui::TextUnformatted("Replace it? The existing item is moved to the Trash.");
-        if (ImGui::Button("Replace")) {
+        ImGui::TextUnformatted(tr("already exists and was not made by MetroFuse."));
+        ImGui::TextUnformatted(tr("Replace it? The existing item is moved to the Trash."));
+        if (ImGui::Button(tr("Replace"))) {
             report(create_shortcut(pending_shortcut_place_, true));
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Keep it")) {
-            info_ = "Left the existing item alone.";
+        if (ImGui::Button(tr("Keep it"))) {
+            info_ = tr("Left the existing item alone.");
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
@@ -1620,14 +1686,14 @@ int App::run() {
             if (picked_state_export_ && store_) {
                 std::string err;
                 bool ok = store_->export_slot(file_slot_, utf8_path(*picked_state_export_), &err);
-                states_msg_ = ok ? "Exported " + states::slot_name(file_slot_) + "." : err;
+                states_msg_ = ok ? trf("Exported {0}.", states::slot_name(file_slot_)) : err;
                 states_msg_err_ = !ok;
                 picked_state_export_.reset();
             }
             if (picked_state_import_ && store_) {
                 std::string err;
                 bool ok = store_->import_into(file_slot_, utf8_path(*picked_state_import_), &err);
-                states_msg_ = ok ? "Imported into " + states::slot_name(file_slot_) + "." : err;
+                states_msg_ = ok ? trf("Imported into {0}.", states::slot_name(file_slot_)) : err;
                 states_msg_err_ = !ok;
                 picked_state_import_.reset();
             }
@@ -1636,9 +1702,9 @@ int App::run() {
                 std::string err;
                 if (!load_bios(&err)) {
                     config_.erase("bios.path");
-                    info_ = err.empty() ? "Could not read that BIOS file." : err;
+                    info_ = err.empty() ? std::string(tr("Could not read that BIOS file.")) : err;
                 } else {
-                    info_ = "BIOS set. It is used the next time the game starts.";
+                    info_ = tr("BIOS set. It is used the next time the game starts.");
                 }
                 info_until_ = ImGui::GetTime() + 8;
                 picked_bios_.reset();

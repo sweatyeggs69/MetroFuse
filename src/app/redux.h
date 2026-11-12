@@ -18,6 +18,8 @@
 #include <cstdint>
 #include <span>
 
+#include "app/i18n.h"
+
 namespace metrofuse::redux {
 
 struct Patch {
@@ -83,15 +85,15 @@ inline constexpr Patch kFastDoors[] = {
 }  // namespace detail
 
 inline constexpr Tweak kTweaks[] = {
-    {"skip_intro", "Skip the opening with START", "Press START during the new-file intro to jump to the start of the game.", Kind::Host, {}},
-    {"fast_text", "Fast text", "Messages and Adam's briefings scroll at full speed without holding A.", Kind::Rom, detail::kFastText},
-    {"fast_doors", "Faster door transitions", "Rooms scroll in twice as fast when you go through a door.", Kind::Rom, detail::kFastDoors},
-    {"fast_elevators", "Faster elevators", "Elevators move twice as fast.", Kind::Rom, detail::kFastElevators},
-    {"pause_list_timer", "Item counts and timer on the map", "The pause map shows collected tanks and play time on a first playthrough.", Kind::Rom, detail::kPauseListTimer},
-    {"accurate_clock", "Accurate in-game clock", "A second is 60 frames, so the clock matches real time.", Kind::Rom, detail::kAccurateClock},
-    {"charge_normal_beam", "Chargeable starting beam", "Hold B to charge the beam before you find the Charge Beam.", Kind::Rom, detail::kChargeNormalBeam},
-    {"morph_idle", "Morph Ball rests when still", "The Morph Ball only rolls while it is moving.", Kind::Host, {}},
-    {"no_low_health_alarm", "No low health alarm", "Turns off the beeping when energy is low.", Kind::Rom, detail::kLowHealthAlarm},
+    {"skip_intro", N_("Skip the opening with START"), N_("Press START during the new-file intro to jump to the start of the game."), Kind::Host, {}},
+    {"fast_text", N_("Fast text"), N_("Messages and Adam's briefings scroll at full speed without holding A."), Kind::Rom, detail::kFastText},
+    {"fast_doors", N_("Faster door transitions"), N_("Rooms scroll in twice as fast when you go through a door."), Kind::Rom, detail::kFastDoors},
+    {"fast_elevators", N_("Faster elevators"), N_("Elevators move twice as fast."), Kind::Rom, detail::kFastElevators},
+    {"pause_list_timer", N_("Item counts and timer on the map"), N_("The pause map shows collected tanks and play time on a first playthrough."), Kind::Rom, detail::kPauseListTimer},
+    {"accurate_clock", N_("Accurate in-game clock"), N_("A second is 60 frames, so the clock matches real time."), Kind::Rom, detail::kAccurateClock},
+    {"charge_normal_beam", N_("Chargeable starting beam"), N_("Hold B to charge the beam before you find the Charge Beam."), Kind::Rom, detail::kChargeNormalBeam},
+    {"morph_idle", N_("Morph Ball rests when still"), N_("The Morph Ball only rolls while it is moving."), Kind::Host, {}},
+    {"no_low_health_alarm", N_("No low health alarm"), N_("Turns off the beeping when energy is low."), Kind::Rom, detail::kLowHealthAlarm},
 };
 inline constexpr std::size_t kTweakCount = sizeof(kTweaks) / sizeof(kTweaks[0]);
 
