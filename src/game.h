@@ -46,5 +46,12 @@ inline constexpr std::string_view kSaveHeader{"\xb4\xc8\x9b\xa1" "K7d^" "01" "\x
 //   +4 u16 current missiles +6 u16 max missiles
 //   +8 u8 current power bombs  +9 u8 max power bombs
 inline constexpr unsigned kEquipmentAddress = 0x03001310;
+// +0xC u8 suit/misc ability flags; this bit is set once the Morph Ball is collected.
+inline constexpr unsigned kSuitMorphBall = 1u << 6;
+
+// Samus's state (struct SamusData at gSamusData in the community disassembly). +1 u8 pose.
+inline constexpr unsigned kSamusDataAddress = 0x03001244;
+// Pose while crouched on the ground; a new Down press here morphs if the Morph Ball is owned.
+inline constexpr unsigned kPoseCrouching = 7;
 
 }  // namespace metrofuse::game

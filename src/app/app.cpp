@@ -21,6 +21,7 @@
 #include "app/achievements.h"
 #include "app/bmp.h"
 #include "app/cheats.h"
+#include "app/hold_morph.h"
 #include "app/config.h"
 #include "app/fsutil.h"
 #include "app/platform.h"
@@ -113,6 +114,7 @@ private:
     redux::Flags redux_flags() const;
     redux::Flags redux_ok_{};  // which Redux Mode tweaks match the loaded ROM
     redux::Host redux_host_;
+    hold_morph::Assist hold_morph_;
     std::unique_ptr<states::Store> store_;
     int slot_ = states::kDefaultSlot;
     bool slot_was_auto_ = false;  // the saved current slot was the old Auto slot (0)
@@ -475,7 +477,13 @@ void App::update_emulation() {
         game_->set_wide_margin(display::wide_margin(presenter_->settings().aspect));
         while (script_pos_ < script_.size() && script_[script_pos_].first <= game_frames_)
             script_keys_ = script_[script_pos_++].second;
-        const std::uint16_t keys = std::uint16_t(controls_->poll_frame() | script_keys_);
+        std::uint16_t keys = std::uint16_t(controls_->poll_frame() | script_keys_);
+        if (config_.get_bool("input.hold_morph", false)) {
+            keys = hold_morph_.step(keys, game_->iwram_mut(),
+                                    hold_morph::frames_for_ms(config_.get_int("input.hold_morph_ms", hold_morph::kDefaultMs)));
+        } else {
+            hold_morph_.reset();
+        }
         const redux::Flags mods = redux_flags();
         redux::sync(game_->rom_mut(), mods, redux_ok_);
         game_->set_keys(keys);
