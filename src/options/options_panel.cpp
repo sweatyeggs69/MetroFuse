@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "app/config.h"
-#include "app/hold_morph.h"
 #include "app/theme.h"
 #include "options/display.h"
 #include "options/input.h"
@@ -312,21 +311,6 @@ void controls_tab(input::Manager& in, Config& config) {
         }
         help_marker("Push the right stick up or down to aim diagonally up or down. Leave it off "
                     "if you bound the right stick to GBA buttons.");
-    }
-    {
-        bool on = config.get_bool("input.hold_morph", false);
-        if (theme::toggle("Hold Down to morph", &on)) config.set_bool("input.hold_morph", on);
-        help_marker("Keep holding Down after Samus crouches and she rolls into the Morph Ball, "
-                    "with no second press. Only works on the ground once you have the Morph Ball, "
-                    "and not while aiming diagonally.");
-        ImGui::BeginDisabled(!on);
-        int ms = std::clamp(config.get_int("input.hold_morph_ms", hold_morph::kDefaultMs),
-                            hold_morph::kMinMs, hold_morph::kMaxMs);
-        if (ImGui::SliderInt("Hold time", &ms, hold_morph::kMinMs, hold_morph::kMaxMs, "%d ms",
-                             ImGuiSliderFlags_AlwaysClamp)) {
-            config.set_int("input.hold_morph_ms", ms / 50 * 50);
-        }
-        ImGui::EndDisabled();
     }
 
     ImGui::Spacing();
