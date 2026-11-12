@@ -299,7 +299,8 @@ bool App::init_window() {
         ImGui::TextUnformatted("MetroFuse " METROFUSE_VERSION);
         ImGui::PushFont(theme::font_small());
         ImGui::TextColored(c.ink_muted, "%s", tr("An unofficial project. Not affiliated with Nintendo."));
-        ImGui::TextColored(c.ink_muted, "%s", tr("https://github.com/sweatyeggs69/MetroFuse"));
+        if (ImGui::TextLink("https://github.com/sweatyeggs69/MetroFuse")) SDL_OpenURL("https://github.com/sweatyeggs69/MetroFuse");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Open in your browser"));
         ImGui::PopFont();
         auto block = [](const char* title, std::string_view text) {
             if (!ImGui::CollapsingHeader(title)) return;
