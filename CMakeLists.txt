@@ -167,6 +167,7 @@ if(TARGET SDL3::SDL3)
         src/options/options_panel.cpp
         src/options/presenter.cpp
         src/options/input.cpp
+        src/options/menu_pad.cpp
     )
     target_include_directories(metrofuse_options PUBLIC src)
     target_link_libraries(metrofuse_options PUBLIC imgui metrofuse_display metrofuse_app metrofuse_states SDL3::SDL3)
