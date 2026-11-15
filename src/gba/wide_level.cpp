@@ -21,6 +21,8 @@
 // background wraps as on hardware, and a block layer that does not match is hidden rather
 // than showing stale VRAM. Only addresses and layout descriptions belong here; never copy
 // game data into the repo.
+#include <iterator>
+
 #include "gba.h"
 
 namespace metrofuse::gba {
@@ -31,6 +33,8 @@ constexpr u32 kTileset = 0x03004DDC;   // u32 pointer to the room's block -> 4 e
 constexpr u32 kShared = 0x083BE740;    // block -> 4 entries table for blocks with bit 15 set
 constexpr u32 kCamera = 0x03001224;   // 3 x {u16 x; u16 y}, in quarter pixels
 constexpr int kMainLayer = 1;
+// BG3CNT while a door transition runs: 512x256, screen block 6, char block 1, priority 0.
+constexpr u16 kDoorTransitionBg3Cnt = 0x4604;
 
 bool in_ram(u32 a) { return (a >> 24) == 0x02 || (a >> 24) == 0x03; }
 }  // namespace
@@ -111,26 +115,34 @@ void Gba::wide_level_detect() {
                 }
             return checked >= 16 && match * 16 >= checked * 15 ? match : -1;
         };
-        // Try the game's own camera for this layer first (it wins ties, which matters for a
-        // mostly empty layer that matches in many places), then every other candidate.
+        // The game's own camera for this layer is the best guess, but it runs up to a frame
+        // ahead of VRAM and the scroll registers (the game moves the camera before VBlank
+        // copies the new rows and columns), so it rarely equals HOFS/VOFS while scrolling.
+        // Take the register-consistent camera nearest to it: when that one matches it wins
+        // outright. Only when it does not (title, cutscenes) are the other positions tried,
+        // and then only a single match counts: a mostly empty or repetitive layer matches in
+        // many places, and taking any of those shows the wrong part of the room in the side
+        // columns (garbage blocks at the edges while jumping or scrolling).
         const s32 hint_x = s32(wide_ram16(kCamera + u32(layer) * 4)) >> 2;
         const s32 hint_y = s32(wide_ram16(kCamera + u32(layer) * 4 + 2)) >> 2;
-        int best = -1;
-        s32 best_x = 0, best_y = 0;
-        if (u32(hint_x & 511) == hofs && u32(hint_y & 255) == (vofs & 255)) {
-            best = score(hint_x, hint_y);
-            best_x = hint_x;
-            best_y = hint_y;
-        }
-        for (s32 cy = s32(vofs & 0xFF); cy < level_h; cy += 256) {
-            for (s32 cx = s32(hofs); cx < level_w; cx += 512) {
-                const int match = score(cx, cy);
-                if (match > best) {
+        auto nearest = [](s32 hint, s32 reg, s32 period) {
+            return hint + ((reg - hint) % period + period + period / 2) % period - period / 2;
+        };
+        s32 best_x = nearest(hint_x, s32(hofs), 512), best_y = nearest(hint_y, s32(vofs & 0xFF), 256);
+        int best = score(best_x, best_y);
+        if (best < 0) {
+            int found = 0;
+            for (s32 cy = s32(vofs & 0xFF); cy < level_h; cy += 256) {
+                for (s32 cx = s32(hofs); cx < level_w; cx += 512) {
+                    const int match = score(cx, cy);
+                    if (match < 0) continue;
+                    ++found;
                     best = match;
                     best_x = cx;
                     best_y = cy;
                 }
             }
+            if (found != 1) best = -1;
         }
         if (best < 0) continue;
         L.tiles_w = tiles_w;
@@ -144,6 +156,14 @@ void Gba::wide_level_detect() {
     wide_scene_ = matched[kMainLayer];
     if (!wide_scene_) {
         for (auto& L : wide_level_) L.mode = WideMode::Vram;
+        // Door transition: the room is blanked and the door tube, the only thing on a black
+        // 512x256 BG3 map, slides across the screen. That map is complete (not a ring
+        // buffer), so it is drawn wrapped as on hardware instead of being cut at the old edge.
+        const u16 bg3cnt = u16(io_[0x0E] | (io_[0x0F] << 8));
+        if ((dispcnt & 0x0F00) == 0x0800 && bg3cnt == kDoorTransitionBg3Cnt) {
+            wide_scene_ = true;
+            wide_hud_prio_ = 0;
+        }
         return;
     }
     wide_main_bg_ = bg_of_layer[kMainLayer];
@@ -153,6 +173,60 @@ void Gba::wide_level_detect() {
     // Block layers that did not match would show stale ring columns: hide their sides.
     for (int layer = 0; layer < 3; ++layer)
         if (bg_of_layer[layer] >= 0 && !matched[layer]) wide_level_[bg_of_layer[layer]].mode = WideMode::Hide;
+}
+
+// The game only draws a sprite (enemies, items...) while its position is within the 240x160
+// view plus the sprite's own draw distance (SpriteCheckOnScreen, 0x0800F568 in the community
+// decompilation). With wide sides, sprites with a small draw distance popped in only once
+// they reached the old edge. The patch adds the margin to the horizontal draw distance. It
+// needs one more instruction than the original, so it drops a 16-bit mask of the camera that
+// the two following uses do not need (one is shifted left by 16, the other masked again).
+//
+//   original                         patched
+//   0800F5D4 adds r0, r7, r3         adds r0, r7, r3          (camera X + 512, unmasked)
+//   0800F5D6 lsls r0, r0, #16        ldr  r1, [sp]
+//   0800F5D8 lsrs r0, r0, #16        adds r3, r1, r3
+//   0800F5DA ldr  r1, [sp]           lsls r3, r3, #16
+//   0800F5DC adds r3, r1, r3         mov  r1, ip
+//   0800F5DE lsls r3, r3, #16        adds r1, #0x29
+//   0800F5E0 mov  r1, ip             ldrb r1, [r1]            (drawDistanceHorizontal)
+//   0800F5E2 adds r1, #0x29          lsls r1, r1, #2
+//   0800F5E4 ldrb r1, [r1]           adds r1, #(margin * 4)   (the new instruction)
+//   0800F5E6 lsls r1, r1, #2         subs r2, r0, r1
+//   0800F5E8 subs r2, r0, r1         lsls r2, r2, #16
+//   0800F5EA lsls r2, r2, #16        lsrs r4, r3, #16
+//   0800F5EC lsrs r4, r3, #16        movs r7, #0xF0
+//   0800F5EE movs r7, #0xF0          lsls r7, r7, #2
+//   0800F5F0 lsls r7, r7, #2         adds r1, r1, r7
+//   0800F5F2 adds r1, r1, r7         adds r0, r0, r1
+//   0800F5F4 adds r0, r0, r1         lsls r0, r0, #16
+//   0800F5F6 lsls r0, r0, #16        lsrs r0, r0, #16
+//   0800F5F8 lsrs r0, r0, #16        nop
+void Gba::wide_sprite_patch(int margin) {
+    if (margin == wide_sprite_margin_) return;
+    static constexpr u32 kAt = 0x0000F5D4;
+    static constexpr std::size_t kImm = 8;  // index of the added instruction
+    static constexpr u16 kOriginal[] = {0x18F8, 0x0400, 0x0C00, 0x9900, 0x18CB, 0x041B, 0x4661, 0x3129, 0x7809, 0x0089,
+                                        0x1A42, 0x0412, 0x0C1C, 0x27F0, 0x00BF, 0x19C9, 0x1840, 0x0400, 0x0C00};
+    static constexpr u16 kPatched[] = {0x18F8, 0x9900, 0x18CB, 0x041B, 0x4661, 0x3129, 0x7809, 0x0089, 0x3100,
+                                       0x1A42, 0x0412, 0x0C1C, 0x27F0, 0x00BF, 0x19C9, 0x1840, 0x0400, 0x0C00, 0x46C0};
+    static_assert(std::size(kOriginal) == std::size(kPatched));
+    auto at = [&](std::size_t i) { return u16(rom_[kAt + 2 * i] | (rom_[kAt + 2 * i + 1] << 8)); };
+    // Only touch the code when it is one of the two known forms (the ROM is verified, but stay
+    // safe if anything else ever changes these bytes).
+    bool original = rom_.size() > kAt + sizeof(kOriginal), patched = original;
+    for (std::size_t i = 0; i < std::size(kOriginal) && (original || patched); ++i) {
+        const u16 want_patched = i == kImm ? u16(kPatched[i] | (at(i) & 0xFF)) : kPatched[i];
+        original = original && at(i) == kOriginal[i];
+        patched = patched && at(i) == want_patched;
+    }
+    if (!original && !patched) return;
+    for (std::size_t i = 0; i < std::size(kOriginal); ++i) {
+        const u16 v = margin ? (i == kImm ? u16(kPatched[i] | u16(margin * 4)) : kPatched[i]) : kOriginal[i];
+        rom_[kAt + 2 * i] = u8(v);
+        rom_[kAt + 2 * i + 1] = u8(v >> 8);
+    }
+    wide_sprite_margin_ = margin;
 }
 
 }  // namespace metrofuse::gba
