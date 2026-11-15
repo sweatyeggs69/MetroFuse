@@ -5,7 +5,7 @@ if(APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 endif()
 
-project(metrofuse LANGUAGES C CXX VERSION 1.6.1)
+project(metrofuse LANGUAGES C CXX VERSION 1.7.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -354,6 +354,9 @@ if(METROFUSE_BUILD_TESTS)
     target_link_libraries(metrofuse_update_test PRIVATE metrofuse_update_core)
     target_compile_definitions(metrofuse_update_test PRIVATE METROFUSE_TEST_DATA="${PROJECT_SOURCE_DIR}/tests/data")
     add_test(NAME updates COMMAND metrofuse_update_test)
+    add_executable(metrofuse_wide_sprites_test tests/wide_sprites_test.cpp)
+    target_link_libraries(metrofuse_wide_sprites_test PRIVATE metrofuse_gba)
+    add_test(NAME wide_sprites COMMAND metrofuse_wide_sprites_test)
     add_executable(metrofuse_state_test tests/state_test.cpp)
     target_link_libraries(metrofuse_state_test PRIVATE metrofuse_gba metrofuse_core)
     # Uses the user's own ROM when it sits in the source folder (it is never committed).
