@@ -556,7 +556,7 @@ void App::update_emulation() {
         redux_host_.before_frame(game_->iwram_mut(), mods, keys);
         game_->run_frame();
         redux_host_.after_frame(game_->iwram_mut(), mods);
-        play_rumble(rumble_watch_.step(game_->iwram()));  // before the cheats refill anything
+        play_rumble(rumble_watch_.step(game_->iwram(), game_->ewram()));  // before the cheats refill anything
         if (cheats_allowed()) {
             cheats::apply(game_->iwram_mut(), cheats::Flags{config_.get_bool("cheats.health", false),
                                                             config_.get_bool("cheats.missiles", false),

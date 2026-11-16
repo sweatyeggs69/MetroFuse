@@ -17,6 +17,7 @@ std::size_t iw(unsigned a) { return a - 0x03000000u; }
 int main() {
     namespace rumble = metrofuse::rumble;
     Ram ram{};
+    const std::array<std::uint8_t, 0x40000> ewram{};
     rumble::Watcher w;
 
     // A loaded file: 99 of 99 energy, 10 of 10 missiles.
@@ -24,68 +25,68 @@ int main() {
     set16(ram, kEq + 2, 99);
     set16(ram, kEq + 4, 10);
     set16(ram, kEq + 6, 10);
-    CHECK(!w.step(ram));  // first frame only primes
-    CHECK(!w.step(ram));  // nothing changed
+    CHECK(!w.step(ram, ewram));  // first frame only primes
+    CHECK(!w.step(ram, ewram));  // nothing changed
 
     // A hit for 20: a clear pulse on both motors.
     set16(ram, kEq + 0, 79);
-    rumble::Pulse p = w.step(ram);
+    rumble::Pulse p = w.step(ram, ewram);
     CHECK(p && p.low >= 0.6f && p.high > 0);
 
     // Energy coming back (or a cheat refilling it) never rumbles.
     set16(ram, kEq + 0, 99);
-    CHECK(!w.step(ram));
+    CHECK(!w.step(ram, ewram));
 
     // A 1-point drain gives a light buzz.
     set16(ram, kEq + 0, 98);
-    p = w.step(ram);
+    p = w.step(ram, ewram);
     CHECK(p && p.strength() < 0.3f);
 
     // Death: full strength.
     set16(ram, kEq + 0, 0);
-    p = w.step(ram);
+    p = w.step(ram, ewram);
     CHECK(p && p.strength() == 1.0f && p.ms >= 500);
     set16(ram, kEq + 0, 99);
-    w.step(ram);
+    w.step(ram, ewram);
 
     // A missile: a light tick on the small motor only.
     set16(ram, kEq + 4, 9);
-    p = w.step(ram);
+    p = w.step(ram, ewram);
     CHECK(p && p.low == 0 && p.high > 0);
 
     // A bigger energy tank changes the maximum: a different file, so no damage pulse.
     set16(ram, kEq + 0, 50);
     set16(ram, kEq + 2, 199);
-    CHECK(!w.step(ram));
+    CHECK(!w.step(ram, ewram));
 
     // The screen starts shaking for 30 frames, then counts down (no new pulse while it does).
     ram[iw(rumble::kScreenShakeY)] = 30;
-    p = w.step(ram);
+    p = w.step(ram, ewram);
     CHECK(p && p.low >= 0.5f && p.ms >= 30 * 16);
     ram[iw(rumble::kScreenShakeY)] = 29;
-    CHECK(!w.step(ram));
+    CHECK(!w.step(ram, ewram));
     ram[iw(rumble::kScreenShakeY)] = 0;
-    w.step(ram);
+    w.step(ram, ewram);
 
     // A power bomb going off.
     ram[iw(rumble::kPowerBomb)] = 1;
-    p = w.step(ram);
+    p = w.step(ram, ewram);
     CHECK(p && p.low == 1.0f);
     ram[iw(rumble::kPowerBomb)] = 3;
-    CHECK(!w.step(ram));
+    CHECK(!w.step(ram, ewram));
 
     // Title screen demo: nothing.
     ram[iw(rumble::kDemoState)] = 1;
-    w.step(ram);
+    w.step(ram, ewram);
     set16(ram, kEq + 0, 10);
-    CHECK(!w.step(ram));
+    CHECK(!w.step(ram, ewram));
     ram[iw(rumble::kDemoState)] = 0;
-    CHECK(!w.step(ram));  // the frame the demo ends still compares against demo numbers
+    CHECK(!w.step(ram, ewram));  // the frame the demo ends still compares against demo numbers
 
     // reset(): a loaded state with less energy is not a hit.
     w.reset();
     set16(ram, kEq + 0, 5);
-    CHECK(!w.step(ram));
+    CHECK(!w.step(ram, ewram));
 
     // Mixer: a weaker pulse never cuts a stronger one short; it plays again once that is over.
     rumble::Mixer mix;

@@ -3,17 +3,17 @@
 // game's RAM after every frame and turns what just happened into a Pulse; the host plays it on
 // every connected controller (input::Manager::rumble), scaled by the strength setting.
 //
-// Events, all read from Metroid Fusion's RAM (addresses from the community disassembly; the
-// equipment and Samus addresses are the ones the cheats and Auto Morph Ball already use):
-//   - Samus takes damage: gEquipment (IWRAM 0x03001310) +0 u16 energy drops. Stronger for bigger
-//     hits; heat, cold and acid that drain a little every few frames give a light buzz.
+// Events, all read from Metroid Fusion's RAM (addresses from the community disassembly's linker
+// script; the equipment address is the one the cheats already use):
+//   - Samus takes damage: gEquipment (IWRAM 0x03001310) +0 u16 energy drops. Stronger
+//     for bigger hits; heat, cold and acid that drain a little every few frames give a light buzz.
 //   - Samus dies: energy reaches 0.
 //   - the screen shakes: gScreenShakeY / gScreenShakeX (IWRAM 0x030000F0 / 0x030000F4,
 //     struct { u8 timer; u8 delay; u8 intensity; u8 direction; }). The game shakes the screen for
 //     explosions, heavy landings, bosses and the like, so the controller shakes with it.
 //   - a power bomb goes off: gCurrentPowerBomb (IWRAM 0x03000110) +0 u8 state turns non-zero
-//     (Samus's and the SA-X's).
-//   - a missile is fired: +4 u16 missiles drops (a light tick).
+//     (Samus's or the SA-X's).
+//   - a missile is fired: +0x4 u16 missiles drops (a light tick).
 // Nothing fires during the title screen demos (gDemoState, IWRAM 0x03001242, non-zero).
 //
 // Settings (metrofuse::Config): input.rumble (on by default), input.rumble_strength (10-100,
@@ -32,9 +32,9 @@ inline constexpr int kDefaultStrength = 75;
 inline constexpr int kMinStrength = 10;
 // Shown next to the Controller rumble toggle.
 inline constexpr const char* kEventsHelp =
-    "Shakes your controller when Samus is hurt, when the screen shakes (explosions, bosses, heavy "
-    "landings), when a power bomb goes off and, lightly, when she fires a missile. Works with "
-    "controllers that have rumble motors.";
+    "Shakes your controller when Samus is hurt, when the screen shakes (explosions, bosses, "
+    "heavy landings), when a power bomb goes off and, lightly, when she fires a missile. "
+    "Works with controllers that have rumble motors.";
 
 // One rumble: motor strengths 0..1 (low = the big, slow motor, high = the small, fast one).
 struct Pulse {
@@ -53,7 +53,7 @@ inline Pulse stronger(const Pulse& a, const Pulse& b) {
 }
 
 // Decides which pulses reach the controllers: a new pulse replaces the one still playing only
-// when it is at least as strong, so a missile tick never cuts an explosion short. Counts time in
+// when it is at least as strong, so a light tick never cuts a big hit short. Counts time in
 // game frames (step once per emulated frame).
 class Mixer {
 public:
@@ -81,13 +81,21 @@ inline std::uint16_t motor(float level, int strength_percent) {
     return std::uint16_t(v * 65535.0f + 0.5f);
 }
 
+// A hit that took `lost` of `max` health: stronger and longer for bigger hits.
+inline Pulse hit(int lost, int max) {
+    const float share = max > 0 ? float(lost) / float(max) : 0.0f;
+    const float f = std::min(1.0f, 0.45f + share * 2.0f);
+    return {f, f * 0.6f, 120 + int(std::min(share, 0.5f) * 400.0f)};
+}
+inline constexpr Pulse kDeath{1.0f, 1.0f, 700};
+
 namespace detail {
 inline std::uint16_t get16(std::span<const std::uint8_t> m, std::size_t at) {
     return std::uint16_t(m[at] | (m[at + 1] << 8));
 }
 }  // namespace detail
 
-// ---- Metroid Fusion ------------------------------------------------------------------------
+// ---- Metroid Fusion ----
 
 inline constexpr unsigned kScreenShakeY = 0x030000F0;
 inline constexpr unsigned kScreenShakeX = 0x030000F4;
@@ -100,21 +108,22 @@ public:
     // not taken for an event.
     void reset() { primed_ = false; }
 
-    // Call after each emulated frame with the 32 KiB IWRAM (0x03000000).
-    Pulse step(std::span<const std::uint8_t> iwram) {
+    // Call after each emulated frame with the 32 KiB IWRAM (0x03000000) and 256 KiB EWRAM.
+    Pulse step(std::span<const std::uint8_t> iwram, std::span<const std::uint8_t> /*ewram*/) {
         using detail::get16;
-        const std::size_t eq = game::kEquipmentAddress - 0x03000000u;
+        constexpr std::size_t iw = 0x03000000u;
+        const std::size_t eq = game::kEquipmentAddress - iw;
         if (iwram.size() < 0x8000) return {};
         Frame now;
-        now.energy = get16(iwram, eq + 0);
-        now.max_energy = get16(iwram, eq + 2);
-        now.missiles = get16(iwram, eq + 4);
-        now.max_missiles = get16(iwram, eq + 6);
-        now.shake_y = iwram[kScreenShakeY - 0x03000000u];
-        now.shake_x = iwram[kScreenShakeX - 0x03000000u];
-        now.shake_power = std::max(iwram[kScreenShakeY - 0x03000000u + 2], iwram[kScreenShakeX - 0x03000000u + 2]);
-        now.power_bomb = iwram[kPowerBomb - 0x03000000u];
-        now.demo = iwram[kDemoState - 0x03000000u] != 0;
+        now.energy = get16(iwram, eq + 0x0);
+        now.max_energy = get16(iwram, eq + 0x2);
+        now.missiles = get16(iwram, eq + 0x4);
+        now.max_missiles = get16(iwram, eq + 0x6);
+        now.shake_y = iwram[kScreenShakeY - iw];
+        now.shake_x = iwram[kScreenShakeX - iw];
+        now.shake_power = std::max(iwram[kScreenShakeY - iw + 2], iwram[kScreenShakeX - iw + 2]);
+        now.power_bomb = iwram[kPowerBomb - iw];
+        now.demo = iwram[kDemoState - iw] != 0;
 
         const Frame before = last_;
         const bool primed = primed_;
@@ -123,17 +132,14 @@ public:
         if (!primed || now.demo || before.demo) return {};
 
         Pulse out;
-        const bool same_file = now.max_energy == before.max_energy && now.max_energy != 0;
-        if (same_file && now.energy < before.energy) {
+        // Same file (the maximum did not change) and energy went down.
+        if (now.max_energy == before.max_energy && now.max_energy != 0 && now.energy < before.energy) {
             const int lost = before.energy - now.energy;
-            if (now.energy == 0) out = stronger(out, {1.0f, 1.0f, 700});  // death
+            if (now.energy == 0) out = stronger(out, kDeath);
             else if (lost <= 2) out = stronger(out, {0.25f, 0.15f, 60});  // heat / cold / acid drain
-            else {
-                const float f = std::min(1.0f, 0.45f + lost / 60.0f);
-                out = stronger(out, {f, f * 0.6f, 120 + std::min(lost, 60) * 2});
-            }
+            else out = stronger(out, hit(lost, now.max_energy));
         }
-        // A shake starts (or is extended): the timer goes up.
+        // A shake starts (or is extended): its timer goes up.
         const int shake = std::max(now.shake_y > before.shake_y ? now.shake_y : 0,
                                    now.shake_x > before.shake_x ? now.shake_x : 0);
         if (shake > 0) {
