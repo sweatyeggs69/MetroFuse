@@ -28,6 +28,7 @@
 #include "app/platform.h"
 #include "app/redux.h"
 #include "app/rewind.h"
+#include "app/rumble.h"
 #include "app/save_import.h"
 #include "app/states.h"
 #include "app/licenses.h"
@@ -127,6 +128,10 @@ private:
     redux::Flags redux_ok_{};  // which Redux Mode tweaks match the loaded ROM
     redux::Host redux_host_;
     auto_morph::Assist auto_morph_;
+    rumble::Watcher rumble_watch_;
+    rumble::Mixer rumble_mix_;
+    void play_rumble(const rumble::Pulse& p);
+    void stop_rumble();  // and forget the last frame (the game is paused, rewound or reloaded)
     std::unique_ptr<states::Store> store_;
     int slot_ = states::kDefaultSlot;
     bool slot_was_auto_ = false;  // the saved current slot was the old Auto slot (0)
@@ -444,6 +449,7 @@ void App::start_game() {
     if (!game_ && rom_.ok) game_ = make_gba(true);
     attract_.reset();
     game_paused_ = false;
+    rumble_watch_.reset();
     screen_ = Screen::Game;
     game_started_at_ = ImGui::GetTime();
     if (audio_) SDL_ClearAudioStream(audio_);
@@ -461,6 +467,7 @@ void App::set_menu_open(bool open) {
 
 void App::return_to_launcher() {
     controls_->set_fast_forward_latched(false);
+    stop_rumble();
     auto_save();
     options_menu_set_open(false);
     game_paused_ = true;
@@ -524,9 +531,11 @@ void App::update_emulation() {
         draw_test_pattern(pattern_, std::uint32_t(frames_));
         pixels = pattern_.data();
     } else if (screen_ == Screen::Game && game_ && options_menu_open()) {
+        stop_rumble();
         pixels = game_->framebuffer();  // paused under the settings menu
     } else if (screen_ == Screen::Game && game_ && rewinding_) {
         // Rewind: step back through the history, silently, one snapshot per frame.
+        stop_rumble();
         if (const std::vector<std::uint8_t>* back = rewind_.step_back()) {
             game_->load_state(*back);
             auto_morph_.reset();
@@ -547,6 +556,7 @@ void App::update_emulation() {
         redux_host_.before_frame(game_->iwram_mut(), mods, keys);
         game_->run_frame();
         redux_host_.after_frame(game_->iwram_mut(), mods);
+        play_rumble(rumble_watch_.step(game_->iwram()));  // before the cheats refill anything
         if (cheats_allowed()) {
             cheats::apply(game_->iwram_mut(), cheats::Flags{config_.get_bool("cheats.health", false),
                                                             config_.get_bool("cheats.missiles", false),
@@ -573,6 +583,7 @@ void App::update_emulation() {
             rewind_.clear();
         }
     } else if (game_ && game_paused_) {
+        stop_rumble();
         pixels = game_->framebuffer();
     } else if (attract_) {
         attract_->run_frame();
@@ -589,6 +600,24 @@ void App::update_emulation() {
                                        : volume * (screen_ == Screen::Game ? 1.0f : 0.35f));
         SDL_PutAudioStreamData(audio_, audio_buf_.data(), int(audio_buf_.size() * sizeof(std::int16_t)));
     }
+}
+
+void App::play_rumble(const rumble::Pulse& p) {
+    rumble_mix_.step();
+    const int strength = std::clamp(config_.get_int("input.rumble_strength", rumble::kDefaultStrength),
+                                    rumble::kMinStrength, 100);
+    if (!config_.get_bool("input.rumble", rumble::kDefaultOn)) {
+        if (rumble_mix_.playing()) stop_rumble();
+        return;
+    }
+    if (rumble_mix_.take(p))
+        controls_->rumble(rumble::motor(p.low, strength), rumble::motor(p.high, strength), p.ms);
+}
+
+void App::stop_rumble() {
+    rumble_watch_.reset();
+    if (rumble_mix_.playing()) controls_->stop_rumble();
+    rumble_mix_.clear();
 }
 
 void App::update_refresh_rate() {
