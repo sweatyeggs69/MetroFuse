@@ -23,6 +23,7 @@ inline constexpr const char* kFileSafeTitle = "Metroid Fusion";
 // GBA cartridge header of the supported dump.
 inline constexpr const char* kHeaderTitle = "METROID4USA";  // 0xA0, 12 bytes
 inline constexpr const char* kGameCode = "AMTE";            // 0xAC, 4 bytes
+inline constexpr const char* kMakerCode = "01";             // 0xB0, 2 bytes (Nintendo)
 inline constexpr unsigned kRevision = 0;                    // 0xBC
 inline constexpr std::size_t kRomSize = 8 * 1024 * 1024;
 
@@ -31,6 +32,19 @@ inline constexpr std::size_t kRomSize = 8 * 1024 * 1024;
 // emptied, a ROM is accepted on a header match instead and the launcher labels it
 // "header match (fingerprint not pinned yet)".
 inline constexpr const char* kExpectedSha1 = "ca33f4348c2c05dd330d37b97e2c5a69531dfe87";
+
+// Other releases of the game, recognised only so the error message can say what the file is.
+// None of them can run: the recompiled code is the USA revision 0 code.
+struct OtherRelease {
+    const char* sha1;       // exact dump, or nullptr to match on the game code alone
+    const char* game_code;  // 0xAC
+    const char* name;       // shown to the user
+};
+inline constexpr OtherRelease kOtherReleases[] = {
+    {nullptr, "AMTP", "a European release"},
+    {nullptr, "AMTJ", "a Japanese release"},
+    {nullptr, "AMTC", "the Chinese (iQue) release"},
+};
 
 // Battery save: 32 KiB SRAM (the ROM carries the SRAM_V112 library string).
 inline constexpr std::size_t kSaveSize = 32 * 1024;
