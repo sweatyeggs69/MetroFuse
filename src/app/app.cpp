@@ -207,6 +207,12 @@ private:
     bool lockstep_ = false;  // one emulated frame per refresh
     double audio_fill_avg_ = -1;
     Uint64 audio_log_at_ = 0;
+    // Slow refreshes during play are always logged (with what took the time), so a report of
+    // stutter or freezes comes with numbers. At most one line every two seconds.
+    Uint64 slow_log_at_ = 0;
+    int slow_unlogged_ = 0;
+    std::string pacing_logged_;
+    void log_slow_refresh(Uint64 total_ns, Uint64 emu_ns, Uint64 present_ns, int steps);
     void update_refresh_rate();
     void update_audio_rate();
     std::vector<std::pair<long, std::uint16_t>> script_;  // --input, in game frames
@@ -638,9 +644,37 @@ void App::update_refresh_rate() {
     }
     const double gba_hz = 1.0 / kFrameSeconds;  // 59.7275
     lockstep_ = vsync_ && refresh_hz_ > 0 && std::fabs(refresh_hz_ / gba_hz - 1.0) < 0.015;
-    if (opt_.verbose)
-        std::fprintf(stderr, "metrofuse: vsync %s, display %.3f Hz, %s\n", vsync_ ? "on" : "off", refresh_hz_,
-                     lockstep_ ? "one frame per refresh" : vsync_ ? "accumulator pacing" : "timer pacing");
+    // Logged whenever it changes (not only with --verbose): it is the first thing to know about
+    // a stutter report.
+    char line[160];
+    std::snprintf(line, sizeof line, "vsync %s, display %.3f Hz, %s", vsync_ ? "on" : "off", refresh_hz_,
+                  lockstep_ ? "one frame per refresh" : vsync_ ? "accumulator pacing" : "timer pacing");
+    if (opt_.verbose || line != pacing_logged_) {
+        const char* renderer = renderer_ ? SDL_GetRendererName(renderer_) : nullptr;
+        std::fprintf(stderr, "metrofuse: MetroFuse %s on %s, renderer %s, %s\n", METROFUSE_VERSION,
+                     SDL_GetPlatform(), renderer ? renderer : "?", line);
+        pacing_logged_ = line;
+    }
+}
+
+void App::log_slow_refresh(Uint64 total_ns, Uint64 emu_ns, Uint64 present_ns, int steps) {
+    const Uint64 now = SDL_GetTicksNS();
+    if (now < slow_log_at_) {
+        ++slow_unlogged_;
+        return;
+    }
+    const double frame_bytes = gba::kAudioRate * kFrameSeconds * 4;
+    const double audio = audio_ ? double(SDL_GetAudioStreamQueued(audio_)) / frame_bytes : 0.0;
+    std::fprintf(stderr,
+                 "metrofuse: slow refresh %.0f ms (emulation %.1f ms for %d frame%s, draw %.1f ms, other %.1f ms), "
+                 "game frame %ld, audio queue %.1f frames, rewind %s, speed %dx",
+                 total_ns / 1e6, emu_ns / 1e6, steps, steps == 1 ? "" : "s", present_ns / 1e6,
+                 double(total_ns > emu_ns + present_ns ? total_ns - emu_ns - present_ns : 0) / 1e6, game_frames_,
+                 audio, rewind_allowed() ? "on" : "off", ff_speed_);
+    if (slow_unlogged_) std::fprintf(stderr, ", %d more since the last line", slow_unlogged_);
+    std::fputc('\n', stderr);
+    slow_unlogged_ = 0;
+    slow_log_at_ = now + 2000000000ull;
 }
 
 // Dynamic rate control: the game makes 32768 Hz audio per emulated frame. In lockstep the game runs
@@ -1819,6 +1853,7 @@ int App::run() {
     Uint64 last = next, acc = 0;
     double lock_acc = 0;
     const Uint64 frame_ns = Uint64(kFrameSeconds * 1e9);
+    Uint64 refresh_start = 0;  // when the previous refresh was presented, for the slow refresh log
     while (running_) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) handle_event(e);
@@ -1893,11 +1928,13 @@ int App::run() {
         }
         steps *= ff_speed_;
         bool reached_end = false;
+        const Uint64 emu_start = SDL_GetTicksNS();
         for (int i = 0; i < steps; ++i) {
             update_emulation();
             ++frames_;
             if (opt_.frames >= 0 && frames_ >= opt_.frames) { reached_end = true; break; }
         }
+        const Uint64 emu_ns = SDL_GetTicksNS() - emu_start;
         update_audio_rate();
         if (achievements_) achievements_->idle(game_.get());  // network replies, pings, toasts
 
@@ -1911,6 +1948,7 @@ int App::run() {
         menu_was_open_ = menu;
 
         bool toast = toast::active();
+        const Uint64 draw_start = SDL_GetTicksNS();
         if (screen_ == Screen::Game && !menu) {
             if (!opt_.screenshot.empty() && reached_end && !toast) presenter_->capture_next(opt_.screenshot.string());
             if (steps == 0) {
@@ -1955,6 +1993,15 @@ int App::run() {
             SDL_RenderPresent(renderer_);
         }
 
+        {
+            // Time since the previous refresh. Anything over 100 ms during play is a visible
+            // hitch (six or more refreshes missed), so log where it went.
+            const Uint64 now = SDL_GetTicksNS();
+            const Uint64 total = now - refresh_start;
+            if (screen_ == Screen::Game && game_ && !menu && !game_paused_ && game_frames_ > 1 && refresh_start && total > 100000000ull)
+                log_slow_refresh(total, emu_ns, now - draw_start, steps);
+            refresh_start = now;
+        }
         if (reached_end) running_ = false;
         if (!vsync_) {  // fallback: sleep-based pacing
             next += frame_ns;
