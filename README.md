@@ -100,6 +100,11 @@ Saves, save states and settings live in your user folder, never inside the app:
 - Windows: `%APPDATA%\MetroFuse\MetroFuse\`
 - Linux: `~/.local/share/MetroFuse/MetroFuse/`
 
+**Portable mode:** put an empty file named `portable.txt` next to MetroFuse (next to the `.exe` on
+Windows, the AppImage on Linux, or the app on macOS). MetroFuse then keeps everything in a `userdata`
+folder beside it, so the whole folder can live on a USB stick or a NAS. Copy your old files into
+`userdata` to bring them along.
+
 Settings > States > **Show save folder** opens it.
 
 ## Building from source
